@@ -7,6 +7,7 @@
 - Rust 单文件 CLI，无 Python 运行时依赖
 - 多实例 profile 配置
 - Issue 获取、列表、创建、更新和删除
+- Attachment 下载到本地
 - Project、User、Time Entry、Wiki Page 基础 CRUD
 - `--fields` 字段投影，减少 Agent token 消耗
 - `fields` 和 `schema` 离线元数据查询
@@ -131,6 +132,10 @@ profiles:
 
 当前 CLI 按资源组织命令，不再提供旧版本的动态 `resource` 路由。
 
+除 `config`、`fields` 和 `schema` 外，访问 Redmine API 的命令都需要
+`-p/--profile <PROFILE>` 或 `REDMINE_PROFILE`。使用完整 Issue URL 时，CLI
+可以根据 URL 自动匹配已配置的 profile；其他资源的数字 ID 和 API 操作仍需要明确指定 profile。
+
 ### issue — Issue 操作
 
 #### issue get
@@ -208,9 +213,76 @@ redmine-cli issue fields
 redmine-cli issue schema
 ```
 
-### project、user、time-entry、wiki-page
+### attachment — Attachment 操作
 
-这些资源提供统一的基础命令：
+附件下载需要 profile 和附件 ID。默认保存到 `$HOME/Downloads`，目录不存在时自动创建；
+目标文件已存在时不会覆盖。
+
+```bash
+redmine-cli -p prod issue get 124365 --include attachments
+redmine-cli -p prod attachment download 391795
+redmine-cli -p prod attachment download 391795 --output ./clipboard.png
+```
+
+### project — Project 操作
+
+```bash
+redmine-cli -p prod project get 1
+redmine-cli -p prod project get 1 --fields id,name,identifier
+redmine-cli -p prod project list --limit 20 --fields id,name,identifier
+redmine-cli -p prod project list --status 1 --sort name --offset 0
+redmine-cli -p prod project create --json '{"name":"Example","identifier":"example"}'
+echo '{"name":"Updated"}' | redmine-cli -p prod project update 1 --stdin
+redmine-cli -p prod project delete 1
+redmine-cli project fields
+redmine-cli project schema
+```
+
+### user — User 操作
+
+```bash
+redmine-cli -p prod user get 5
+redmine-cli -p prod user get 5 --fields id,login,firstname,lastname
+redmine-cli -p prod user list --limit 20 --fields id,login,firstname,lastname
+redmine-cli -p prod user list --project-id 1 --status 1
+redmine-cli -p prod user create --json '{"login":"demo","firstname":"Demo","lastname":"User"}'
+echo '{"firstname":"Updated"}' | redmine-cli -p prod user update 5 --stdin
+redmine-cli -p prod user delete 5
+redmine-cli user fields
+redmine-cli user schema
+```
+
+### time-entry — Time Entry 操作
+
+```bash
+redmine-cli -p prod time-entry get 1
+redmine-cli -p prod time-entry get 1 --fields id,issue,hours,spent_on,user
+redmine-cli -p prod time-entry list --project-id 1 --limit 20
+redmine-cli -p prod time-entry list --user-id 5 --sort spent_on:desc
+redmine-cli -p prod time-entry create --json '{"issue_id":123,"hours":1.5}'
+echo '{"hours":2}' | redmine-cli -p prod time-entry update 1 --stdin
+redmine-cli -p prod time-entry delete 1
+redmine-cli time-entry fields
+redmine-cli time-entry schema
+```
+
+### wiki-page — Wiki Page 操作
+
+```bash
+redmine-cli -p prod wiki-page get 1
+redmine-cli -p prod wiki-page get 1 --fields id,title,text
+redmine-cli -p prod wiki-page list --project-id 1709 --limit 20
+redmine-cli -p prod wiki-page list --sort title
+redmine-cli -p prod wiki-page create --json '{"title":"Home","text":"内容"}'
+echo '{"text":"Updated content"}' | redmine-cli -p prod wiki-page update 1 --stdin
+redmine-cli -p prod wiki-page delete 1
+redmine-cli wiki-page fields
+redmine-cli wiki-page schema
+```
+
+### 通用资源参数
+
+`project`、`user`、`time-entry` 和 `wiki-page` 提供统一的基础命令：
 
 ```text
 get <reference> | list | create | update <reference> | delete <reference> | fields | schema
@@ -219,13 +291,13 @@ get <reference> | list | create | update <reference> | delete <reference> | fiel
 示例：
 
 ```bash
-redmine-cli -p prod project get 1
-redmine-cli -p prod project list --limit 20 --fields id,name,identifier
-redmine-cli -p prod user get 5
-redmine-cli -p prod time-entry list --user-id 5
-redmine-cli -p prod wiki-page list --project-id 1709
-redmine-cli project fields
-redmine-cli user schema
+redmine-cli -p prod <resource> get <id-or-url>
+redmine-cli -p prod <resource> list --limit 20 --fields id,name
+redmine-cli -p prod <resource> create --json '{"name":"Example"}'
+redmine-cli -p prod <resource> update 1 --json '{"name":"Updated"}'
+redmine-cli -p prod <resource> delete 1
+redmine-cli <resource> fields
+redmine-cli <resource> schema
 ```
 
 通用列表选项：
@@ -335,8 +407,7 @@ cargo build --release
 
 ## 依赖
 
-- [redmine-api](https://crates.io/crates/redmine-api) — Issue API 访问
-- [reqwest](https://crates.io/crates/reqwest) — 通用 Redmine API 请求
+- [redmine-api](https://crates.io/crates/redmine-api) — Redmine API 访问和认证
 - [clap](https://crates.io/crates/clap) — CLI 参数解析
 - [serde](https://crates.io/crates/serde) — JSON/YAML 序列化
 
