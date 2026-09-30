@@ -26,7 +26,7 @@ pub struct Cli {
         long,
         global = true,
         env = "REDMINE_PROFILE",
-        help = "Saved Redmine profile to use"
+        help = "Saved Redmine profile; required for API requests unless a full URL can auto-detect it"
     )]
     pub profile: Option<String>,
     #[command(subcommand)]
@@ -47,7 +47,7 @@ pub enum Command {
     Attachment(attachment::AttachmentCommand),
     #[command(
         about = "Manage Redmine issues",
-        after_help = "Examples:\n  redmine-cli -p prod issue get 123\n  redmine-cli issue get https://prod.example.com/issues/123\n  redmine-cli issue get 123 --include attachments,journals\n  redmine-cli issue list --status open --limit 20\n  redmine-cli issue list --project-id 1 --fields id,subject,status\n  redmine-cli issue create --project-id 1 --subject \"New issue\"\n  redmine-cli issue update 123 --json '{\"priority_id\":3}'\n  redmine-cli issue fields\n  redmine-cli issue schema"
+        after_help = "ID-based requests, list, create, update, and delete require -p/--profile or REDMINE_PROFILE. A full issue URL can auto-detect the profile.\nExamples:\n  redmine-cli -p prod issue get 123\n  redmine-cli issue get https://prod.example.com/issues/123\n  redmine-cli -p prod issue get 123 --include attachments,journals\n  redmine-cli -p prod issue list --status open --limit 20\n  redmine-cli -p prod issue list --project-id 1 --fields id,subject,status\n  redmine-cli -p prod issue create --project-id 1 --subject \"New issue\"\n  redmine-cli -p prod issue update 123 --json '{\"priority_id\":3}'\n  redmine-cli issue fields\n  redmine-cli issue schema"
     )]
     Issue(issue::cli::IssueCommand),
     #[command(
@@ -72,7 +72,7 @@ pub enum Command {
     WikiPage(wiki_page::WikiPageCommand),
     #[command(
         about = "Search Redmine resources and issues",
-        after_help = "Examples:\n  redmine-cli search \"login error\"\n  redmine-cli search \"customer\" --limit 20 --offset 20"
+        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExamples:\n  redmine-cli -p prod search \"login error\"\n  redmine-cli -p prod search \"customer\" --limit 20 --offset 20"
     )]
     Search {
         #[arg(help = "Text to search for")]

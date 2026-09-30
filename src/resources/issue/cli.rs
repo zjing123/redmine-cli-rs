@@ -33,7 +33,7 @@ pub enum IssueError {
 #[derive(Debug, Args)]
 #[command(
     about = "Manage Redmine issues",
-    after_help = "Examples:\n  redmine-cli -p prod issue get 123\n  redmine-cli issue get https://prod.example.com/issues/123\n  redmine-cli issue get 123 --include attachments,journals\n  redmine-cli issue list --status open --limit 20\n  redmine-cli issue list --project-id 1 --fields id,subject,status\n  redmine-cli issue create --project-id 1 --subject \"New issue\"\n  redmine-cli issue update 123 --json '{\"priority_id\":3}'\n  redmine-cli issue fields\n  redmine-cli issue schema"
+    after_help = "ID-based requests, list, create, update, and delete require -p/--profile or REDMINE_PROFILE. A full issue URL can auto-detect the profile.\nExamples:\n  redmine-cli -p prod issue get 123\n  redmine-cli issue get https://prod.example.com/issues/123\n  redmine-cli -p prod issue get 123 --include attachments,journals\n  redmine-cli -p prod issue list --status open --limit 20\n  redmine-cli -p prod issue list --project-id 1 --fields id,subject,status\n  redmine-cli -p prod issue create --project-id 1 --subject \"New issue\"\n  redmine-cli -p prod issue update 123 --json '{\"priority_id\":3}'\n  redmine-cli issue fields\n  redmine-cli issue schema"
 )]
 pub struct IssueCommand {
     #[command(subcommand)]

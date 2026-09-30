@@ -39,7 +39,7 @@ pub enum ResourceError {
 pub enum ResourceCommand {
     #[command(
         about = "Get one resource by numeric ID or URL",
-        after_help = "Example:\n  redmine-cli <resource> get 1"
+        after_help = "ID-based requests require -p/--profile or REDMINE_PROFILE. A full resource URL may auto-detect the profile.\nExample:\n  redmine-cli -p prod <resource> get 1"
     )]
     Get {
         #[arg(help = "Resource ID or Redmine URL")]
@@ -49,7 +49,7 @@ pub enum ResourceCommand {
     },
     #[command(
         about = "List resources with optional filters and pagination",
-        after_help = "Example:\n  redmine-cli <resource> list --limit 20"
+        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExample:\n  redmine-cli -p prod <resource> list --limit 20"
     )]
     List {
         #[arg(long, help = "Filter by project ID")]
@@ -75,12 +75,12 @@ pub enum ResourceCommand {
     },
     #[command(
         about = "Create a new resource from JSON or stdin",
-        after_help = "Examples:\n  redmine-cli <resource> create --json '{\"name\":\"Example\"}'\n  cat request.json | redmine-cli <resource> create --stdin"
+        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExamples:\n  redmine-cli -p prod <resource> create --json '{\"name\":\"Example\"}'\n  cat request.json | redmine-cli -p prod <resource> create --stdin"
     )]
     Create(ResourceInput),
     #[command(
         about = "Update an existing resource from JSON or stdin",
-        after_help = "Example:\n  redmine-cli <resource> update 1 --json '{\"name\":\"Updated\"}'"
+        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExample:\n  redmine-cli -p prod <resource> update 1 --json '{\"name\":\"Updated\"}'"
     )]
     Update {
         #[arg(help = "Resource ID or Redmine URL")]
@@ -90,7 +90,7 @@ pub enum ResourceCommand {
     },
     #[command(
         about = "Delete a resource by numeric ID or URL",
-        after_help = "Example:\n  redmine-cli <resource> delete 1"
+        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExample:\n  redmine-cli -p prod <resource> delete 1"
     )]
     Delete {
         #[arg(help = "Resource ID or Redmine URL")]

@@ -48,7 +48,7 @@ pub struct AttachmentCommand {
 pub enum AttachmentSubcommand {
     #[command(
         about = "Download an attachment to a local file",
-        after_help = "Examples:\n  redmine-cli -p redminex attachment download 391795\n  redmine-cli -p redminex attachment download 391795 --output ./image.png"
+        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExamples:\n  redmine-cli -p redminex attachment download 391795\n  redmine-cli -p redminex attachment download 391795 --output ./image.png"
     )]
     Download {
         #[arg(help = "Attachment ID")]
