@@ -1,14 +1,13 @@
-use std::{borrow::Cow, io::Read};
+use std::io::Read;
 
 use clap::{Args, Subcommand};
-use redmine_api::api::{Endpoint, NoPagination, QueryParams, Redmine, ReturnsJsonResponse};
-use reqwest::{Method, blocking::Client};
+use redmine_api::reqwest::Method;
 use serde_json::{Map, Value, json};
 use thiserror::Error;
 use url::Url;
 
 use crate::{
-    config::{Config, ConfigError, Profile},
+    config::{Config, ConfigError},
     output,
 };
 
@@ -18,8 +17,8 @@ pub enum ResourceError {
     Config(#[from] ConfigError),
     #[error("redmine-api request failed: {0}")]
     Redmine(#[from] redmine_api::Error),
-    #[error("HTTP client setup failed: {0}")]
-    Request(#[from] reqwest::Error),
+    #[error(transparent)]
+    Client(#[from] crate::redmine_client::RedmineClientError),
     #[error("invalid resource URL: {0}")]
     Url(#[from] url::ParseError),
     #[error("invalid JSON input: {0}")]
@@ -102,12 +101,12 @@ pub fn run(
 
     let config = Config::load(None)?;
     let (profile_name, profile_data) = config.profile(profile)?;
-    let client = ResourceClient::new(&profile_data)?;
+    let client = crate::redmine_client::RedmineClient::from_profile(&profile_data)?;
     match command {
         ResourceCommand::Get { reference, fields } => {
             let id = parse_reference(resource, &reference)?;
             let response =
-                client.request_json(Method::GET, &format!("{resource}/{id}.json"), None)?;
+                client.request_json(Method::GET, &format!("{resource}/{id}.json"), None, &[])?;
             let value = response.get(singular).cloned().unwrap_or(response);
             output::success(select_fields(value, fields.as_deref()));
         }
@@ -137,12 +136,8 @@ pub fn run(
             if let Some(value) = sort {
                 query.push(("sort", value));
             }
-            let response = client.request_json_with_query(
-                Method::GET,
-                &format!("{resource}.json"),
-                None,
-                &query,
-            )?;
+            let response =
+                client.request_json(Method::GET, &format!("{resource}.json"), None, &query)?;
             let items = response
                 .get(resource)
                 .cloned()
@@ -167,6 +162,7 @@ pub fn run(
                 Method::POST,
                 &format!("{resource}.json"),
                 Some(wrap_payload(singular, payload)),
+                &[],
             )?;
             output::success(response.get(singular).cloned().unwrap_or(response));
         }
@@ -177,6 +173,7 @@ pub fn run(
                 Method::PUT,
                 &format!("{resource}/{id}.json"),
                 Some(wrap_payload(singular, payload)),
+                &[],
             )?;
             output::success(response.get(singular).cloned().unwrap_or(response));
         }
@@ -188,98 +185,6 @@ pub fn run(
         ResourceCommand::Fields | ResourceCommand::Schema => unreachable!(),
     }
     Ok(())
-}
-
-struct ResourceClient {
-    client: Redmine,
-}
-
-impl ResourceClient {
-    fn new(profile: &Profile) -> Result<Self, ResourceError> {
-        let http = Client::builder().use_rustls_tls().build()?;
-        Ok(Self {
-            client: Redmine::new(
-                http,
-                Url::parse(&profile.url)?,
-                profile.api_key.as_deref().unwrap_or_default(),
-            )?,
-        })
-    }
-
-    fn request_json(
-        &self,
-        method: Method,
-        path: &str,
-        body: Option<Value>,
-    ) -> Result<Value, ResourceError> {
-        self.request_json_with_query(method, path, body, &[])
-    }
-
-    fn request_json_with_query(
-        &self,
-        method: Method,
-        path: &str,
-        body: Option<Value>,
-        query: &[(&str, String)],
-    ) -> Result<Value, ResourceError> {
-        let endpoint = ResourceEndpoint {
-            method,
-            path: path.to_owned(),
-            body,
-            query: query
-                .iter()
-                .map(|(key, value)| ((*key).to_owned(), value.clone()))
-                .collect(),
-        };
-        Ok(self.client.json_response_body(&endpoint)?)
-    }
-
-    fn delete(&self, path: &str) -> Result<(), ResourceError> {
-        let endpoint = ResourceEndpoint {
-            method: Method::DELETE,
-            path: path.to_owned(),
-            body: None,
-            query: Vec::new(),
-        };
-        self.client.ignore_response_body(&endpoint)?;
-        Ok(())
-    }
-}
-
-struct ResourceEndpoint {
-    method: Method,
-    path: String,
-    body: Option<Value>,
-    query: Vec<(String, String)>,
-}
-
-impl ReturnsJsonResponse for ResourceEndpoint {}
-impl NoPagination for ResourceEndpoint {}
-
-impl Endpoint for ResourceEndpoint {
-    fn method(&self) -> Method {
-        self.method.clone()
-    }
-
-    fn endpoint(&self) -> Cow<'static, str> {
-        Cow::Owned(self.path.clone())
-    }
-
-    fn parameters(&self) -> QueryParams<'_> {
-        let mut params = QueryParams::default();
-        for (key, value) in &self.query {
-            params.push(key.as_str(), value.as_str());
-        }
-        params
-    }
-
-    fn body(&self) -> Result<Option<(&'static str, Vec<u8>)>, redmine_api::Error> {
-        self.body
-            .as_ref()
-            .map(|body| serde_json::to_vec(body).map(|data| ("application/json", data)))
-            .transpose()
-            .map_err(redmine_api::Error::from)
-    }
 }
 
 fn read_input(input: ResourceInput) -> Result<Value, ResourceError> {

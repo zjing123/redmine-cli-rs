@@ -4,19 +4,18 @@ use redmine_api::api::issues::{
     GetIssue, Issue, IssueInclude, IssueListInclude, ListIssues, SortByColumn,
 };
 use redmine_api::api::{self, Endpoint, NoPagination, ResponsePage, ReturnsJsonResponse};
-use reqwest::{Method, blocking::Client};
+use redmine_api::reqwest::Method;
 use serde_json::Value;
 use thiserror::Error;
-use url::Url;
 
-use crate::config::Profile;
+use crate::{config::Profile, redmine_client::RedmineClient};
 
 #[derive(Debug, Error)]
 pub enum ApiError {
     #[error("redmine-api error: {0}")]
     Redmine(#[from] redmine_api::Error),
-    #[error("invalid profile URL: {0}")]
-    InvalidUrl(#[from] url::ParseError),
+    #[error(transparent)]
+    Client(#[from] crate::redmine_client::RedmineClientError),
     #[error("invalid request JSON: {0}")]
     Json(#[from] serde_json::Error),
     #[error("invalid endpoint options: {0}")]
@@ -24,19 +23,13 @@ pub enum ApiError {
 }
 
 pub struct ApiClient {
-    client: redmine_api::api::Redmine,
+    client: RedmineClient,
 }
 
 impl ApiClient {
     pub fn new(profile: &Profile) -> Result<Self, ApiError> {
-        let http = Client::builder()
-            .use_rustls_tls()
-            .build()
-            .map_err(redmine_api::Error::from)?;
-        let url = Url::parse(&profile.url)?;
-        let api_key = profile.api_key.as_deref().unwrap_or_default();
         Ok(Self {
-            client: api::Redmine::new(http, url, api_key)?,
+            client: RedmineClient::from_profile(profile)?,
         })
     }
 
@@ -47,7 +40,7 @@ impl ApiClient {
             .build()
             .map_err(|error| ApiError::Builder(error.to_string()))?;
         let response: api::issues::IssueWrapper<Issue> =
-            self.client.json_response_body(&endpoint)?;
+            self.client.api().json_response_body(&endpoint)?;
         Ok(serde_json::to_value(response.issue)?)
     }
 
@@ -93,7 +86,7 @@ impl ApiClient {
         let endpoint = builder
             .build()
             .map_err(|error| ApiError::Builder(error.to_string()))?;
-        let page = self.client.json_response_body_page::<_, Issue>(
+        let page = self.client.api().json_response_body_page::<_, Issue>(
             &endpoint,
             filters.offset,
             filters.limit,
@@ -113,14 +106,14 @@ impl ApiClient {
     pub fn create_issue(&self, payload: Value) -> Result<Value, ApiError> {
         let endpoint = JsonIssueEndpoint::new(Method::POST, "issues.json", payload);
         let response: api::issues::IssueWrapper<Value> =
-            self.client.json_response_body(&endpoint)?;
+            self.client.api().json_response_body(&endpoint)?;
         Ok(response.issue)
     }
 
     pub fn update_issue(&self, id: u64, payload: Value) -> Result<Value, ApiError> {
         let endpoint = JsonIssueEndpoint::new(Method::PUT, format!("issues/{id}.json"), payload);
         let response: api::issues::IssueWrapper<Value> =
-            self.client.json_response_body(&endpoint)?;
+            self.client.api().json_response_body(&endpoint)?;
         Ok(response.issue)
     }
 
@@ -129,7 +122,7 @@ impl ApiClient {
             .id(id)
             .build()
             .map_err(|error| ApiError::Builder(error.to_string()))?;
-        self.client.ignore_response_body(&endpoint)?;
+        self.client.api().ignore_response_body(&endpoint)?;
         Ok(())
     }
 }
