@@ -1,3 +1,9 @@
 target/
 Cargo.lock
 !Cargo.lock
+
+.agents/
+.claude/
+skills-lock.json
+docs/superpowers/plans/2026-09-29-rust-issue-mvp.md
+docs/superpowers/specs/2026-09-29-rust-issue-mvp-design.md
