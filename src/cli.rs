@@ -18,7 +18,7 @@ pub enum CliError {
     name = "redmine-cli",
     version,
     about = "Redmine command-line client",
-    after_help = "Examples:\n  redmine-cli config list\n  redmine-cli issue get 123\n  redmine-cli attachment download 391795\n  redmine-cli search \"login error\""
+    after_help = "This is a concise overview of the available commands.\nUse `redmine-cli <command> --help` for detailed options and examples."
 )]
 pub struct Cli {
     #[arg(
