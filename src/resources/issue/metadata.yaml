@@ -6,8 +6,8 @@ schema:
   operations:
     create:
       required: [project_id]
-      optional: [subject, description, tracker_id, status_id, priority_id, assigned_to_id, custom_fields]
+      optional: [tracker_id, status_id, priority_id, subject, description, category_id, fixed_version_id, assigned_to_id, parent_issue_id, custom_fields, watcher_user_ids, is_private, estimated_hours, uploads]
     update:
-      optional: [subject, description, tracker_id, status_id, priority_id, assigned_to_id, custom_fields, notes]
+      optional: [project_id, tracker_id, status_id, priority_id, subject, description, category_id, fixed_version_id, assigned_to_id, parent_issue_id, custom_fields, watcher_user_ids, is_private, estimated_hours, notes, private_notes, uploads]
     delete: true
   readonly: [id, author, created_on, updated_on]
