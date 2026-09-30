@@ -34,9 +34,12 @@ impl ApiClient {
     }
 
     pub fn get_issue(&self, id: u64, includes: &[IssueInclude]) -> Result<Value, ApiError> {
-        let endpoint = GetIssue::builder()
-            .id(id)
-            .include(includes.to_vec())
+        let mut builder = GetIssue::builder();
+        builder.id(id);
+        if !includes.is_empty() {
+            builder.include(includes.to_vec());
+        }
+        let endpoint = builder
             .build()
             .map_err(|error| ApiError::Builder(error.to_string()))?;
         let response: api::issues::IssueWrapper<Issue> =

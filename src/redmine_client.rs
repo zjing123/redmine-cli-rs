@@ -26,7 +26,7 @@ pub struct RedmineClient {
 
 impl RedmineClient {
     pub fn from_profile(profile: &Profile) -> Result<Self, RedmineClientError> {
-        let http = Client::builder().build()?;
+        let http = Client::builder().tls_backend_rustls().build()?;
         let url = Url::parse(&profile.url)?;
         Ok(Self {
             client: api::Redmine::new(http, url, profile.api_key.as_deref().unwrap_or_default())?,
