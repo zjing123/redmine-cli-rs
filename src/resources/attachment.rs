@@ -15,6 +15,13 @@ pub enum AttachmentError {
     Config(#[from] ConfigError),
     #[error(transparent)]
     Client(#[from] RedmineClientError),
+    #[error("cannot determine the home directory")]
+    HomeDirectory,
+    #[error("failed to create download directory '{path}': {source}")]
+    CreateDirectory {
+        path: String,
+        source: std::io::Error,
+    },
     #[error("failed to create output file '{path}': {source}")]
     CreateFile {
         path: String,
@@ -51,7 +58,17 @@ pub fn run(command: AttachmentCommand, profile: Option<&str>) -> Result<(), Atta
     let (_, profile_data) = config.profile(profile)?;
     let client = RedmineClient::from_profile(&profile_data)?;
     let attachment = client.attachment(id)?;
-    let path = output.unwrap_or_else(|| PathBuf::from(&attachment.filename));
+    let path = if let Some(output) = output {
+        output
+    } else {
+        let home = std::env::var_os("HOME").ok_or(AttachmentError::HomeDirectory)?;
+        let downloads = PathBuf::from(home).join("Downloads");
+        std::fs::create_dir_all(&downloads).map_err(|source| AttachmentError::CreateDirectory {
+            path: downloads.display().to_string(),
+            source,
+        })?;
+        downloads.join(&attachment.filename)
+    };
     let data = client.download_attachment(&attachment)?;
     let path_display = path.display().to_string();
     let mut file = OpenOptions::new()
