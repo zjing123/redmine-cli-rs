@@ -47,7 +47,7 @@ pub enum Command {
     Attachment(attachment::AttachmentCommand),
     #[command(
         about = "Manage Redmine issues",
-        after_help = "Example:\n  redmine-cli issue get https://redmine.example.com/issues/123 --include attachments"
+        after_help = "Examples:\n  Integer ID (requires -p or REDMINE_PROFILE):\n    redmine-cli -p prod issue get 123\n  Full URL (automatically matches a configured profile):\n    redmine-cli issue get https://prod.example.com/issues/123"
     )]
     Issue(issue::cli::IssueCommand),
     #[command(
