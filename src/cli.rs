@@ -14,7 +14,12 @@ pub enum CliError {
 }
 
 #[derive(Debug, Parser)]
-#[command(name = "redmine-cli", version, about = "Redmine command-line client")]
+#[command(
+    name = "redmine-cli",
+    version,
+    about = "Redmine command-line client",
+    after_help = "Examples:\n  redmine-cli config list\n  redmine-cli issue get 123\n  redmine-cli attachment download 391795\n  redmine-cli search \"login error\""
+)]
 pub struct Cli {
     #[arg(
         short,
@@ -30,21 +35,45 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    #[command(about = "Manage saved Redmine connection profiles")]
+    #[command(
+        about = "Manage saved Redmine connection profiles",
+        after_help = "Example:\n  redmine-cli config set redminex --url https://redmine.example.com/"
+    )]
     Config(config_cli::ConfigCommand),
-    #[command(about = "Manage Redmine attachments")]
+    #[command(
+        about = "Manage Redmine attachments",
+        after_help = "Example:\n  redmine-cli attachment download 391795"
+    )]
     Attachment(attachment::AttachmentCommand),
-    #[command(about = "Manage Redmine issues")]
+    #[command(
+        about = "Manage Redmine issues",
+        after_help = "Example:\n  redmine-cli issue get https://redmine.example.com/issues/123 --include attachments"
+    )]
     Issue(issue::cli::IssueCommand),
-    #[command(about = "Manage Redmine projects")]
+    #[command(
+        about = "Manage Redmine projects",
+        after_help = "Example:\n  redmine-cli project get 1 --fields id,name,identifier"
+    )]
     Project(project::ProjectCommand),
-    #[command(about = "Manage Redmine users")]
+    #[command(
+        about = "Manage Redmine users",
+        after_help = "Example:\n  redmine-cli user list --limit 20"
+    )]
     User(user::UserCommand),
-    #[command(about = "Manage Redmine time entries")]
+    #[command(
+        about = "Manage Redmine time entries",
+        after_help = "Example:\n  redmine-cli time-entry list --project-id 1"
+    )]
     TimeEntry(time_entry::TimeEntryCommand),
-    #[command(about = "Manage project wiki pages")]
+    #[command(
+        about = "Manage project wiki pages",
+        after_help = "Example:\n  redmine-cli wiki-page get 1"
+    )]
     WikiPage(wiki_page::WikiPageCommand),
-    #[command(about = "Search Redmine resources and issues")]
+    #[command(
+        about = "Search Redmine resources and issues",
+        after_help = "Examples:\n  redmine-cli search \"login error\"\n  redmine-cli search \"customer\" --limit 20 --offset 20"
+    )]
     Search {
         #[arg(help = "Text to search for")]
         query: String,

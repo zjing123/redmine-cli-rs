@@ -31,7 +31,10 @@ pub enum IssueError {
 }
 
 #[derive(Debug, Args)]
-#[command(about = "Manage Redmine issues")]
+#[command(
+    about = "Manage Redmine issues",
+    after_help = "Examples:\n  redmine-cli issue get 123\n  redmine-cli issue list --status open --limit 20\n  redmine-cli issue schema"
+)]
 pub struct IssueCommand {
     #[command(subcommand)]
     pub command: IssueSubcommand,
@@ -39,7 +42,10 @@ pub struct IssueCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum IssueSubcommand {
-    #[command(about = "Get an issue by ID or URL")]
+    #[command(
+        about = "Get an issue by ID or URL",
+        after_help = "Examples:\n  redmine-cli issue get 123\n  redmine-cli issue get https://redmine.example.com/issues/123 --include attachments,journals"
+    )]
     Get {
         #[arg(help = "Issue ID or Redmine URL")]
         reference: String,
@@ -48,7 +54,10 @@ pub enum IssueSubcommand {
         #[arg(long, value_delimiter = ',', help = "Related data to include")]
         include: Vec<String>,
     },
-    #[command(about = "List issues with optional filters")]
+    #[command(
+        about = "List issues with optional filters",
+        after_help = "Examples:\n  redmine-cli issue list --status open --limit 20\n  redmine-cli issue list --project-id 1 --fields id,subject,status"
+    )]
     List {
         #[arg(long, help = "Filter by project ID")]
         project_id: Option<u64>,
@@ -79,23 +88,38 @@ pub enum IssueSubcommand {
         #[arg(long, default_value_t = 0, help = "Number of issues to skip")]
         offset: u64,
     },
-    #[command(about = "Create a new issue")]
+    #[command(
+        about = "Create a new issue",
+        after_help = "Examples:\n  redmine-cli issue create --project-id 1 --subject \"New issue\"\n  echo '{\"project_id\":1,\"subject\":\"New issue\"}' | redmine-cli issue create --stdin"
+    )]
     Create(InputArgs),
-    #[command(about = "Update an existing issue")]
+    #[command(
+        about = "Update an existing issue",
+        after_help = "Examples:\n  redmine-cli issue update 123 --subject \"Updated subject\"\n  redmine-cli issue update 123 --json '{\"priority_id\":3}'"
+    )]
     Update {
         #[arg(help = "Issue ID or Redmine URL")]
         reference: String,
         #[command(flatten)]
         input: InputArgs,
     },
-    #[command(about = "Delete an issue")]
+    #[command(
+        about = "Delete an issue",
+        after_help = "Example:\n  redmine-cli issue delete 123"
+    )]
     Delete {
         #[arg(help = "Issue ID or Redmine URL")]
         reference: String,
     },
-    #[command(about = "Show issue response fields")]
+    #[command(
+        about = "Show issue response fields",
+        after_help = "Example:\n  redmine-cli issue fields"
+    )]
     Fields,
-    #[command(about = "Show issue create/update schema")]
+    #[command(
+        about = "Show issue create/update schema",
+        after_help = "Example:\n  redmine-cli issue schema"
+    )]
     Schema,
 }
 

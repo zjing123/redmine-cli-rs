@@ -37,14 +37,20 @@ pub enum ResourceError {
 
 #[derive(Debug, Subcommand)]
 pub enum ResourceCommand {
-    #[command(about = "Get one resource by numeric ID or URL")]
+    #[command(
+        about = "Get one resource by numeric ID or URL",
+        after_help = "Example:\n  redmine-cli <resource> get 1"
+    )]
     Get {
         #[arg(help = "Resource ID or Redmine URL")]
         reference: String,
         #[arg(long, help = "Return only these comma-separated fields")]
         fields: Option<String>,
     },
-    #[command(about = "List resources with optional filters and pagination")]
+    #[command(
+        about = "List resources with optional filters and pagination",
+        after_help = "Example:\n  redmine-cli <resource> list --limit 20"
+    )]
     List {
         #[arg(long, help = "Filter by project ID")]
         project_id: Option<u64>,
@@ -67,23 +73,38 @@ pub enum ResourceCommand {
         #[arg(long, default_value_t = 0, help = "Number of results to skip")]
         offset: u64,
     },
-    #[command(about = "Create a new resource from JSON or stdin")]
+    #[command(
+        about = "Create a new resource from JSON or stdin",
+        after_help = "Examples:\n  redmine-cli <resource> create --json '{\"name\":\"Example\"}'\n  cat request.json | redmine-cli <resource> create --stdin"
+    )]
     Create(ResourceInput),
-    #[command(about = "Update an existing resource from JSON or stdin")]
+    #[command(
+        about = "Update an existing resource from JSON or stdin",
+        after_help = "Example:\n  redmine-cli <resource> update 1 --json '{\"name\":\"Updated\"}'"
+    )]
     Update {
         #[arg(help = "Resource ID or Redmine URL")]
         reference: String,
         #[command(flatten)]
         input: ResourceInput,
     },
-    #[command(about = "Delete a resource by numeric ID or URL")]
+    #[command(
+        about = "Delete a resource by numeric ID or URL",
+        after_help = "Example:\n  redmine-cli <resource> delete 1"
+    )]
     Delete {
         #[arg(help = "Resource ID or Redmine URL")]
         reference: String,
     },
-    #[command(about = "Show fields available in the resource response")]
+    #[command(
+        about = "Show fields available in the resource response",
+        after_help = "Example:\n  redmine-cli <resource> fields"
+    )]
     Fields,
-    #[command(about = "Show the resource operation schema")]
+    #[command(
+        about = "Show the resource operation schema",
+        after_help = "Example:\n  redmine-cli <resource> schema"
+    )]
     Schema,
 }
 

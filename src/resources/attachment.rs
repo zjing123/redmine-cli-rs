@@ -35,7 +35,10 @@ pub enum AttachmentError {
 }
 
 #[derive(Debug, Args)]
-#[command(about = "Manage Redmine attachments")]
+#[command(
+    about = "Manage Redmine attachments",
+    after_help = "Example:\n  redmine-cli attachment download 391795"
+)]
 pub struct AttachmentCommand {
     #[command(subcommand)]
     pub command: AttachmentSubcommand,
@@ -43,7 +46,10 @@ pub struct AttachmentCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum AttachmentSubcommand {
-    #[command(about = "Download an attachment to a local file")]
+    #[command(
+        about = "Download an attachment to a local file",
+        after_help = "Examples:\n  redmine-cli -p redminex attachment download 391795\n  redmine-cli -p redminex attachment download 391795 --output ./image.png"
+    )]
     Download {
         #[arg(help = "Attachment ID")]
         id: u64,

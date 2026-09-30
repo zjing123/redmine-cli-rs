@@ -32,7 +32,10 @@ pub enum ConfigCliError {
 }
 
 #[derive(Debug, Args)]
-#[command(about = "Manage saved Redmine connection profiles")]
+#[command(
+    about = "Manage saved Redmine connection profiles",
+    after_help = "Examples:\n  redmine-cli config set redminex --url https://redmine.example.com/\n  redmine-cli config test redminex\n  redmine-cli config list"
+)]
 pub struct ConfigCommand {
     #[command(subcommand)]
     pub command: ConfigSubcommand,
@@ -40,27 +43,51 @@ pub struct ConfigCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum ConfigSubcommand {
-    #[command(about = "List all saved profiles without exposing API keys")]
+    #[command(
+        about = "List all saved profiles without exposing API keys",
+        after_help = "Example:\n  redmine-cli config list"
+    )]
     List,
-    #[command(about = "Show one saved profile with its API key redacted")]
+    #[command(
+        about = "Show one saved profile with its API key redacted",
+        after_help = "Example:\n  redmine-cli config get redminex"
+    )]
     Get {
         #[arg(help = "Profile name")]
         profile: String,
     },
-    #[command(about = "Print the configuration file path")]
+    #[command(
+        about = "Print the configuration file path",
+        after_help = "Example:\n  redmine-cli config path"
+    )]
     Path,
-    #[command(about = "Validate the configuration file and all profiles")]
+    #[command(
+        about = "Validate the configuration file and all profiles",
+        after_help = "Example:\n  redmine-cli config validate"
+    )]
     Validate,
-    #[command(about = "Create a new profile configuration")]
+    #[command(
+        about = "Create a new profile configuration",
+        after_help = "Examples:\n  redmine-cli config set redminex --url https://redmine.example.com/\n  redmine-cli config set redminex --url https://redmine.example.com/ --api-key <API_KEY>"
+    )]
     Set(ProfileArgs),
-    #[command(about = "Update an existing profile configuration")]
+    #[command(
+        about = "Update an existing profile configuration",
+        after_help = "Example:\n  redmine-cli config update redminex --url https://redmine.example.com/"
+    )]
     Update(ProfileArgs),
-    #[command(about = "Test the profile against Redmine and show the authenticated user")]
+    #[command(
+        about = "Test the profile against Redmine and show the authenticated user",
+        after_help = "Example:\n  redmine-cli config test redminex"
+    )]
     Test {
         #[arg(help = "Profile name")]
         profile: String,
     },
-    #[command(about = "Remove an entire profile and its configuration")]
+    #[command(
+        about = "Remove an entire profile and its configuration",
+        after_help = "Example:\n  redmine-cli config remove redminex --yes"
+    )]
     Remove {
         #[arg(help = "Profile name")]
         profile: String,
