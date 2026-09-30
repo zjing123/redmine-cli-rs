@@ -31,6 +31,7 @@ pub enum IssueError {
 }
 
 #[derive(Debug, Args)]
+#[command(about = "Manage Redmine issues")]
 pub struct IssueCommand {
     #[command(subcommand)]
     pub command: IssueSubcommand,
@@ -38,6 +39,7 @@ pub struct IssueCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum IssueSubcommand {
+    #[command(about = "Get an issue by ID or URL")]
     Get {
         reference: String,
         #[arg(long)]
@@ -45,6 +47,7 @@ pub enum IssueSubcommand {
         #[arg(long, value_delimiter = ',')]
         include: Vec<String>,
     },
+    #[command(about = "List issues with optional filters")]
     List {
         #[arg(long)]
         project_id: Option<u64>,
@@ -71,16 +74,19 @@ pub enum IssueSubcommand {
         #[arg(long, default_value_t = 0)]
         offset: u64,
     },
+    #[command(about = "Create a new issue")]
     Create(InputArgs),
+    #[command(about = "Update an existing issue")]
     Update {
         reference: String,
         #[command(flatten)]
         input: InputArgs,
     },
-    Delete {
-        reference: String,
-    },
+    #[command(about = "Delete an issue")]
+    Delete { reference: String },
+    #[command(about = "Show issue response fields")]
     Fields,
+    #[command(about = "Show issue create/update schema")]
     Schema,
 }
 
