@@ -41,49 +41,58 @@ pub struct IssueCommand {
 pub enum IssueSubcommand {
     #[command(about = "Get an issue by ID or URL")]
     Get {
+        #[arg(help = "Issue ID or Redmine URL")]
         reference: String,
-        #[arg(long)]
+        #[arg(long, help = "Return only these comma-separated fields")]
         fields: Option<String>,
-        #[arg(long, value_delimiter = ',')]
+        #[arg(long, value_delimiter = ',', help = "Related data to include")]
         include: Vec<String>,
     },
     #[command(about = "List issues with optional filters")]
     List {
-        #[arg(long)]
+        #[arg(long, help = "Filter by project ID")]
         project_id: Option<u64>,
-        #[arg(long)]
+        #[arg(long, help = "Filter by tracker ID")]
         tracker_id: Option<u64>,
-        #[arg(long)]
+        #[arg(long, help = "Filter by priority ID")]
         priority_id: Option<u64>,
-        #[arg(long)]
+        #[arg(long, help = "Filter by status name or comma-separated status IDs")]
         status: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = "Filter by assignee ID")]
         assigned_to_id: Option<u64>,
-        #[arg(long)]
+        #[arg(long, help = "Filter by subject substring")]
         subject: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = "Filter custom fields as a JSON object of ID to value")]
         custom_fields: Option<String>,
-        #[arg(long, value_delimiter = ',')]
+        #[arg(long, value_delimiter = ',', help = "Related data to include")]
         include: Vec<String>,
-        #[arg(long)]
+        #[arg(long, help = "Sort by a column; append :desc for reverse order")]
         sort: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = "Return only these comma-separated fields")]
         fields: Option<String>,
-        #[arg(long, default_value_t = 50)]
+        #[arg(
+            long,
+            default_value_t = 50,
+            help = "Maximum number of issues to return"
+        )]
         limit: u64,
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, help = "Number of issues to skip")]
         offset: u64,
     },
     #[command(about = "Create a new issue")]
     Create(InputArgs),
     #[command(about = "Update an existing issue")]
     Update {
+        #[arg(help = "Issue ID or Redmine URL")]
         reference: String,
         #[command(flatten)]
         input: InputArgs,
     },
     #[command(about = "Delete an issue")]
-    Delete { reference: String },
+    Delete {
+        #[arg(help = "Issue ID or Redmine URL")]
+        reference: String,
+    },
     #[command(about = "Show issue response fields")]
     Fields,
     #[command(about = "Show issue create/update schema")]
@@ -92,23 +101,31 @@ pub enum IssueSubcommand {
 
 #[derive(Debug, Args)]
 pub struct InputArgs {
-    #[arg(long, conflicts_with = "stdin")]
+    #[arg(
+        long,
+        conflicts_with = "stdin",
+        help = "JSON object containing supported issue fields"
+    )]
     pub json: Option<String>,
-    #[arg(long, conflicts_with = "json")]
+    #[arg(
+        long,
+        conflicts_with = "json",
+        help = "Read the JSON object from standard input"
+    )]
     pub stdin: bool,
-    #[arg(long)]
+    #[arg(long, help = "Project ID; required when creating an issue")]
     pub project_id: Option<u64>,
-    #[arg(long)]
+    #[arg(long, help = "Issue subject")]
     pub subject: Option<String>,
-    #[arg(long)]
+    #[arg(long, help = "Issue description")]
     pub description: Option<String>,
-    #[arg(long)]
+    #[arg(long, help = "Tracker ID")]
     pub tracker_id: Option<u64>,
-    #[arg(long)]
+    #[arg(long, help = "Priority ID")]
     pub priority_id: Option<u64>,
-    #[arg(long)]
+    #[arg(long, help = "Assignee ID")]
     pub assigned_to_id: Option<u64>,
-    #[arg(long)]
+    #[arg(long, help = "Custom fields as a JSON object of ID to value")]
     pub custom_fields: Option<String>,
 }
 

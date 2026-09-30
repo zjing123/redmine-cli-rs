@@ -3,6 +3,7 @@ use clap::Args;
 use crate::resources::common::ResourceCommand;
 
 #[derive(Debug, Args)]
+#[command(about = "Manage project wiki pages")]
 pub struct WikiPageCommand {
     #[command(subcommand)]
     pub command: ResourceCommand,

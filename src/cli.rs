@@ -16,7 +16,13 @@ pub enum CliError {
 #[derive(Debug, Parser)]
 #[command(name = "redmine-cli", version, about = "Redmine command-line client")]
 pub struct Cli {
-    #[arg(short, long, global = true, env = "REDMINE_PROFILE")]
+    #[arg(
+        short,
+        long,
+        global = true,
+        env = "REDMINE_PROFILE",
+        help = "Saved Redmine profile to use"
+    )]
     pub profile: Option<String>,
     #[command(subcommand)]
     pub command: Command,
@@ -24,17 +30,29 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    #[command(about = "Manage saved Redmine connection profiles")]
     Config(config_cli::ConfigCommand),
+    #[command(about = "Manage Redmine issues")]
     Issue(issue::cli::IssueCommand),
+    #[command(about = "Manage Redmine projects")]
     Project(project::ProjectCommand),
+    #[command(about = "Manage Redmine users")]
     User(user::UserCommand),
+    #[command(about = "Manage Redmine time entries")]
     TimeEntry(time_entry::TimeEntryCommand),
+    #[command(about = "Manage project wiki pages")]
     WikiPage(wiki_page::WikiPageCommand),
+    #[command(about = "Search Redmine resources and issues")]
     Search {
+        #[arg(help = "Text to search for")]
         query: String,
-        #[arg(long, default_value_t = 50)]
+        #[arg(
+            long,
+            default_value_t = 50,
+            help = "Maximum number of results to return"
+        )]
         limit: u64,
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, help = "Number of results to skip")]
         offset: u64,
     },
 }

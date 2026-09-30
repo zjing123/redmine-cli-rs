@@ -32,6 +32,7 @@ pub enum ConfigCliError {
 }
 
 #[derive(Debug, Args)]
+#[command(about = "Manage saved Redmine connection profiles")]
 pub struct ConfigCommand {
     #[command(subcommand)]
     pub command: ConfigSubcommand,
@@ -39,30 +40,45 @@ pub struct ConfigCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum ConfigSubcommand {
+    #[command(about = "List all saved profiles without exposing API keys")]
     List,
+    #[command(about = "Show one saved profile with its API key redacted")]
     Get {
+        #[arg(help = "Profile name")]
         profile: String,
     },
+    #[command(about = "Print the configuration file path")]
     Path,
+    #[command(about = "Validate the configuration file and all profiles")]
     Validate,
+    #[command(about = "Create a new profile configuration")]
     Set(ProfileArgs),
+    #[command(about = "Update an existing profile configuration")]
     Update(ProfileArgs),
+    #[command(about = "Test the profile against Redmine and show the authenticated user")]
     Test {
+        #[arg(help = "Profile name")]
         profile: String,
     },
+    #[command(about = "Remove an entire profile and its configuration")]
     Remove {
+        #[arg(help = "Profile name")]
         profile: String,
-        #[arg(long)]
+        #[arg(long, help = "Confirm the removal")]
         yes: bool,
     },
 }
 
 #[derive(Debug, Args)]
 pub struct ProfileArgs {
+    #[arg(help = "Profile name")]
     pub profile: String,
-    #[arg(long)]
+    #[arg(long, help = "Redmine server URL")]
     pub url: Option<String>,
-    #[arg(long)]
+    #[arg(
+        long,
+        help = "Redmine API key; prompts securely when omitted for config set"
+    )]
     pub api_key: Option<String>,
 }
 

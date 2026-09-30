@@ -3,6 +3,7 @@ use clap::Args;
 use crate::resources::common::ResourceCommand;
 
 #[derive(Debug, Args)]
+#[command(about = "Manage Redmine projects")]
 pub struct ProjectCommand {
     #[command(subcommand)]
     pub command: ResourceCommand,

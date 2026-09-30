@@ -37,47 +37,69 @@ pub enum ResourceError {
 
 #[derive(Debug, Subcommand)]
 pub enum ResourceCommand {
+    #[command(about = "Get one resource by numeric ID or URL")]
     Get {
+        #[arg(help = "Resource ID or Redmine URL")]
         reference: String,
-        #[arg(long)]
+        #[arg(long, help = "Return only these comma-separated fields")]
         fields: Option<String>,
     },
+    #[command(about = "List resources with optional filters and pagination")]
     List {
-        #[arg(long)]
+        #[arg(long, help = "Filter by project ID")]
         project_id: Option<u64>,
-        #[arg(long)]
+        #[arg(long, help = "Filter by user ID")]
         user_id: Option<u64>,
-        #[arg(long)]
+        #[arg(long, help = "Filter by assignee ID")]
         assigned_to_id: Option<u64>,
-        #[arg(long)]
+        #[arg(long, help = "Filter by status ID")]
         status: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = "Sort expression accepted by Redmine")]
         sort: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = "Return only these comma-separated fields")]
         fields: Option<String>,
-        #[arg(long, default_value_t = 50)]
+        #[arg(
+            long,
+            default_value_t = 50,
+            help = "Maximum number of results to return"
+        )]
         limit: u64,
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, help = "Number of results to skip")]
         offset: u64,
     },
+    #[command(about = "Create a new resource from JSON or stdin")]
     Create(ResourceInput),
+    #[command(about = "Update an existing resource from JSON or stdin")]
     Update {
+        #[arg(help = "Resource ID or Redmine URL")]
         reference: String,
         #[command(flatten)]
         input: ResourceInput,
     },
+    #[command(about = "Delete a resource by numeric ID or URL")]
     Delete {
+        #[arg(help = "Resource ID or Redmine URL")]
         reference: String,
     },
+    #[command(about = "Show fields available in the resource response")]
     Fields,
+    #[command(about = "Show the resource operation schema")]
     Schema,
 }
 
 #[derive(Debug, Args)]
 pub struct ResourceInput {
-    #[arg(long, conflicts_with = "stdin")]
+    #[arg(
+        long,
+        conflicts_with = "stdin",
+        help = "JSON object containing request fields"
+    )]
     pub json: Option<String>,
-    #[arg(long, conflicts_with = "json")]
+    #[arg(
+        long,
+        conflicts_with = "json",
+        help = "Read the JSON object from standard input"
+    )]
     pub stdin: bool,
 }
 
