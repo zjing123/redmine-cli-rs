@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::config_cli;
 use crate::output;
-use crate::resources::{issue, project, time_entry, user, wiki_page};
+use crate::resources::{attachment, issue, project, time_entry, user, wiki_page};
 
 #[derive(Debug, Error)]
 pub enum CliError {
@@ -32,6 +32,8 @@ pub struct Cli {
 pub enum Command {
     #[command(about = "Manage saved Redmine connection profiles")]
     Config(config_cli::ConfigCommand),
+    #[command(about = "Manage Redmine attachments")]
+    Attachment(attachment::AttachmentCommand),
     #[command(about = "Manage Redmine issues")]
     Issue(issue::cli::IssueCommand),
     #[command(about = "Manage Redmine projects")]
@@ -62,6 +64,8 @@ pub fn run(cli: Cli) -> Result<(), CliError> {
         Command::Config(command) => {
             config_cli::run(command).map_err(|error| CliError::Resource(error.to_string()))
         }
+        Command::Attachment(command) => attachment::run(command, cli.profile.as_deref())
+            .map_err(|error| CliError::Resource(error.to_string())),
         Command::Search {
             query,
             limit,

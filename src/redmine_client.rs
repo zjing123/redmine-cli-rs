@@ -78,6 +78,27 @@ impl RedmineClient {
         Ok(response.get("user").cloned().unwrap_or(response))
     }
 
+    pub fn attachment(
+        &self,
+        id: u64,
+    ) -> Result<redmine_api::api::attachments::Attachment, RedmineClientError> {
+        let endpoint = redmine_api::api::attachments::GetAttachment::builder()
+            .id(id)
+            .build()
+            .map_err(|error| RedmineClientError::Builder(error.to_string()))?;
+        let response: redmine_api::api::attachments::AttachmentWrapper<
+            redmine_api::api::attachments::Attachment,
+        > = self.client.json_response_body(&endpoint)?;
+        Ok(response.attachment)
+    }
+
+    pub fn download_attachment(
+        &self,
+        attachment: &redmine_api::api::attachments::Attachment,
+    ) -> Result<Vec<u8>, RedmineClientError> {
+        Ok(self.client.download_attachment(attachment)?)
+    }
+
     pub fn search(
         &self,
         query: String,
