@@ -25,7 +25,7 @@
 - [x] 为各资源添加独立 metadata 文件
 - [x] 支持 `--json`、`--stdin` 和 `--fields`
 - [x] 实现 `config` profile 管理命令
-- [x] 支持 API Key 和 HTTP Basic Auth
+- [x] 所有资源统一通过 `redmine-api` 使用 API Key
 - [x] 实现 `config test` 当前用户认证测试
 - [x] 实现 Search API 和 `search <query>` 命令
 - [x] 根目录 `cargo check --offline` 编译通过

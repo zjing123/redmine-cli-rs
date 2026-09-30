@@ -1,6 +1,7 @@
-use std::io::Read;
+use std::{borrow::Cow, io::Read};
 
 use clap::{Args, Subcommand};
+use redmine_api::api::{Endpoint, NoPagination, QueryParams, Redmine, ReturnsJsonResponse};
 use reqwest::{Method, blocking::Client};
 use serde_json::{Map, Value, json};
 use thiserror::Error;
@@ -15,7 +16,9 @@ use crate::{
 pub enum ResourceError {
     #[error(transparent)]
     Config(#[from] ConfigError),
-    #[error("HTTP request failed: {0}")]
+    #[error("redmine-api request failed: {0}")]
+    Redmine(#[from] redmine_api::Error),
+    #[error("HTTP client setup failed: {0}")]
     Request(#[from] reqwest::Error),
     #[error("invalid resource URL: {0}")]
     Url(#[from] url::ParseError),
@@ -179,7 +182,7 @@ pub fn run(
         }
         ResourceCommand::Delete { reference } => {
             let id = parse_reference(resource, &reference)?;
-            client.request_json(Method::DELETE, &format!("{resource}/{id}.json"), None)?;
+            client.delete(&format!("{resource}/{id}.json"))?;
             output::success(json!({"deleted": true, "id": id}));
         }
         ResourceCommand::Fields | ResourceCommand::Schema => unreachable!(),
@@ -188,17 +191,18 @@ pub fn run(
 }
 
 struct ResourceClient {
-    client: Client,
-    base_url: Url,
-    api_key: String,
+    client: Redmine,
 }
 
 impl ResourceClient {
     fn new(profile: &Profile) -> Result<Self, ResourceError> {
+        let http = Client::builder().use_rustls_tls().build()?;
         Ok(Self {
-            client: Client::builder().use_rustls_tls().build()?,
-            base_url: Url::parse(&profile.url)?,
-            api_key: profile.api_key.clone().unwrap_or_default(),
+            client: Redmine::new(
+                http,
+                Url::parse(&profile.url)?,
+                profile.api_key.as_deref().unwrap_or_default(),
+            )?,
         })
     }
 
@@ -218,30 +222,63 @@ impl ResourceClient {
         body: Option<Value>,
         query: &[(&str, String)],
     ) -> Result<Value, ResourceError> {
-        let mut url = self.base_url.join(path)?;
-        url.query_pairs_mut()
-            .extend_pairs(query.iter().map(|(key, value)| (*key, value.as_str())));
-        let mut request = self
-            .client
-            .request(method, url)
-            .header("X-Redmine-API-Key", &self.api_key)
-            .header("Accept", "application/json");
-        if let Some(body) = body {
-            request = request.json(&body);
+        let endpoint = ResourceEndpoint {
+            method,
+            path: path.to_owned(),
+            body,
+            query: query
+                .iter()
+                .map(|(key, value)| ((*key).to_owned(), value.clone()))
+                .collect(),
+        };
+        Ok(self.client.json_response_body(&endpoint)?)
+    }
+
+    fn delete(&self, path: &str) -> Result<(), ResourceError> {
+        let endpoint = ResourceEndpoint {
+            method: Method::DELETE,
+            path: path.to_owned(),
+            body: None,
+            query: Vec::new(),
+        };
+        self.client.ignore_response_body(&endpoint)?;
+        Ok(())
+    }
+}
+
+struct ResourceEndpoint {
+    method: Method,
+    path: String,
+    body: Option<Value>,
+    query: Vec<(String, String)>,
+}
+
+impl ReturnsJsonResponse for ResourceEndpoint {}
+impl NoPagination for ResourceEndpoint {}
+
+impl Endpoint for ResourceEndpoint {
+    fn method(&self) -> Method {
+        self.method.clone()
+    }
+
+    fn endpoint(&self) -> Cow<'static, str> {
+        Cow::Owned(self.path.clone())
+    }
+
+    fn parameters(&self) -> QueryParams<'_> {
+        let mut params = QueryParams::default();
+        for (key, value) in &self.query {
+            params.push(key.as_str(), value.as_str());
         }
-        let response = request.send()?;
-        let status = response.status();
-        let text = response.text()?;
-        if !status.is_success() {
-            return Err(ResourceError::Http {
-                status: status.as_u16(),
-                body: text,
-            });
-        }
-        if text.is_empty() {
-            return Ok(Value::Null);
-        }
-        Ok(serde_json::from_str(&text)?)
+        params
+    }
+
+    fn body(&self) -> Result<Option<(&'static str, Vec<u8>)>, redmine_api::Error> {
+        self.body
+            .as_ref()
+            .map(|body| serde_json::to_vec(body).map(|data| ("application/json", data)))
+            .transpose()
+            .map_err(redmine_api::Error::from)
     }
 }
 

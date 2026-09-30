@@ -35,10 +35,6 @@ pub struct Profile {
     pub url: String,
     #[serde(alias = "key")]
     pub api_key: Option<String>,
-    #[serde(rename = "username")]
-    pub _username: Option<String>,
-    #[serde(rename = "password")]
-    pub _password: Option<String>,
     #[serde(rename = "version")]
     pub _version: Option<String>,
 }
@@ -183,23 +179,6 @@ impl Config {
     }
 }
 
-impl Profile {
-    pub fn authentication(&self) -> Result<redmine_api::api::Authentication, ConfigError> {
-        if let Some(api_key) = self.api_key.as_deref().filter(|value| !value.is_empty()) {
-            return Ok(redmine_api::api::Authentication::ApiKey(api_key.to_owned()));
-        }
-        match (self._username.as_deref(), self._password.as_deref()) {
-            (Some(username), Some(password)) if !username.is_empty() && !password.is_empty() => {
-                Ok(redmine_api::api::Authentication::Basic {
-                    username: username.to_owned(),
-                    password: password.to_owned(),
-                })
-            }
-            _ => Err(ConfigError::MissingAuthentication("profile".to_owned())),
-        }
-    }
-}
-
 fn default_path() -> PathBuf {
     env::var_os("HOME")
         .map(PathBuf::from)
@@ -218,19 +197,7 @@ fn validate_profile(name: &str, profile: &Profile) -> Result<(), ConfigError> {
         return Err(ConfigError::MissingUrl(name.to_owned()));
     }
     Url::parse(&profile.url).map_err(|_| ConfigError::InvalidUrl(profile.url.clone()))?;
-    let has_api_key = profile
-        .api_key
-        .as_deref()
-        .is_some_and(|value| !value.is_empty());
-    let has_basic_auth = profile
-        ._username
-        .as_deref()
-        .is_some_and(|value| !value.is_empty())
-        && profile
-            ._password
-            .as_deref()
-            .is_some_and(|value| !value.is_empty());
-    if !has_api_key && !has_basic_auth {
+    if profile.api_key.as_deref().is_none_or(str::is_empty) {
         return Err(ConfigError::MissingAuthentication(name.to_owned()));
     }
     Ok(())

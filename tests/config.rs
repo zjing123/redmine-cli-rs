@@ -32,35 +32,21 @@ profiles:
 }
 
 #[test]
-fn accepts_basic_auth_profiles_and_prioritizes_api_key() {
+fn validates_api_key_profiles() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("config.yaml");
     fs::write(
         &path,
         r#"
 profiles:
-  basic:
-    url: https://redmine.example.com/
-    username: alice
-    password: password
-  both:
+  prod:
     url: https://redmine.example.com/
     api_key: api-key
-    username: ignored
-    password: ignored
 "#,
     )
     .unwrap();
 
     let config = Config::load(Some(&path)).unwrap();
-    let (_, basic) = config.profile(Some("basic")).unwrap();
-    assert!(matches!(
-        basic.authentication().unwrap(),
-        redmine_api::api::Authentication::Basic { .. }
-    ));
-    let (_, both) = config.profile(Some("both")).unwrap();
-    assert!(matches!(
-        both.authentication().unwrap(),
-        redmine_api::api::Authentication::ApiKey(_)
-    ));
+    let (_, profile) = config.profile(Some("prod")).unwrap();
+    assert_eq!(profile.api_key.as_deref(), Some("api-key"));
 }

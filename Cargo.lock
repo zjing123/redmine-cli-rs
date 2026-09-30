@@ -1395,7 +1395,7 @@ dependencies = [
 [[package]]
 name = "redmine-api"
 version = "0.11.6"
-source = "git+ssh://git@github.com/zjing123/redmine-api.git?branch=dev#a782aefc1fa21924ab7fb418fd53010a43e93c4e"
+source = "git+ssh://git@github.com/zjing123/redmine-api.git?branch=dev#6ae927e237cb7e267398c235e385f5359aa4dcaa"
 dependencies = [
  "bytes",
  "derive_builder",

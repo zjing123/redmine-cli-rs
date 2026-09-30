@@ -19,7 +19,7 @@ pub enum ConfigCliError {
     ProfileExists(String),
     #[error("profile '{0}' was not found")]
     ProfileMissing(String),
-    #[error("an API key or username/password is required")]
+    #[error("an API key is required")]
     MissingCredentials,
     #[error("remove requires --yes")]
     ConfirmationRequired,
@@ -64,8 +64,6 @@ pub struct ProfileArgs {
     pub url: Option<String>,
     #[arg(long)]
     pub api_key: Option<String>,
-    #[arg(long)]
-    pub username: Option<String>,
 }
 
 pub fn run(command: ConfigCommand) -> Result<(), ConfigCliError> {
@@ -139,8 +137,6 @@ fn set_profile(args: ProfileArgs, update: bool) -> Result<(), ConfigCliError> {
         .unwrap_or(Profile {
             url: String::new(),
             api_key: None,
-            _username: None,
-            _password: None,
             _version: None,
         });
     if let Some(url) = args.url {
@@ -148,21 +144,15 @@ fn set_profile(args: ProfileArgs, update: bool) -> Result<(), ConfigCliError> {
     }
     if let Some(api_key) = args.api_key {
         profile.api_key = Some(api_key);
-        profile._username = None;
-        profile._password = None;
-    } else if let Some(username) = args.username {
-        profile._username = Some(username);
-        profile.api_key = None;
-        if profile._password.is_none() {
-            profile._password = Some(read_secret("Password: ")?);
-        }
-    } else if !update && profile.api_key.is_none() && profile._username.is_none() {
+    } else if !update && profile.api_key.is_none() {
         profile.api_key = Some(read_secret("API Key: ")?);
     }
     if profile.url.is_empty() {
         return Err(ConfigError::MissingUrl(args.profile).into());
     }
-    profile.authentication()?;
+    if profile.api_key.as_deref().is_none_or(str::is_empty) {
+        return Err(ConfigCliError::MissingCredentials);
+    }
     config.insert_profile(args.profile.clone(), profile);
     config.save()?;
     output::success(json!({"profile": args.profile, "saved": true}));
@@ -183,8 +173,6 @@ fn redacted_profile(name: &str, profile: &Profile) -> serde_json::Value {
         .is_some_and(|value| !value.is_empty())
     {
         "api_key"
-    } else if profile._username.is_some() {
-        "basic"
     } else {
         "none"
     };
@@ -192,6 +180,5 @@ fn redacted_profile(name: &str, profile: &Profile) -> serde_json::Value {
         "name": name,
         "url": profile.url,
         "authentication": authentication,
-        "username": profile._username,
     })
 }

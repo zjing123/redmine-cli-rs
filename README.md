@@ -53,16 +53,6 @@ profiles:
 REDMINE_CONFIG=/path/to/config.yaml redmine-cli -p prod issue list
 ```
 
-也支持用户名密码认证：
-
-```yaml
-profiles:
-  basic:
-    url: https://redmine.example.com/
-    username: alice
-    password: your_password_here
-```
-
 ### 选择 profile
 
 ```bash
@@ -105,12 +95,10 @@ redmine-cli -p prod issue get 123
 | 字段 | 说明 |
 | --- | --- |
 | `url` | Redmine 服务地址 |
-| `api_key` | Redmine API Key，与用户名密码二选一 |
+| `api_key` | Redmine API Key |
 | `key` | `api_key` 的兼容别名 |
-| `username` | HTTP Basic Auth 用户名 |
-| `password` | HTTP Basic Auth 密码 |
 
-`api_key` 优先于用户名密码。`config set` 和 `config update` 未提供密钥时会在交互终端中隐藏输入；`config list` 和 `config get` 不会输出密钥或密码。
+`config set` 和 `config update` 未提供密钥时会在交互终端中隐藏输入；`config list` 和 `config get` 不会输出 API Key。
 
 配置管理命令：
 

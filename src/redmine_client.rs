@@ -26,11 +26,8 @@ impl RedmineClient {
     pub fn from_profile(profile: &Profile) -> Result<Self, RedmineClientError> {
         let http = Client::builder().use_rustls_tls().build()?;
         let url = Url::parse(&profile.url)?;
-        let authentication = profile
-            .authentication()
-            .map_err(|error| RedmineClientError::Builder(error.to_string()))?;
         Ok(Self {
-            client: api::Redmine::with_authentication(http, url, authentication)?,
+            client: api::Redmine::new(http, url, profile.api_key.as_deref().unwrap_or_default())?,
         })
     }
 

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extend the forked `redmine-api` on branch `dev` with HTTP Basic Auth and Search support, then add profile management, connection testing, and Search commands to `redmine-cli-rs`.
+**Goal:** Extend the forked `redmine-api` on branch `dev` with Search support, then add API-Key-only profile management, connection testing, and Search commands to `redmine-cli-rs`.
 
-**Architecture:** Add an authentication enum to the fork's synchronous and asynchronous clients while preserving the existing API-Key constructors. Implement Search as a typed endpoint using the library's existing endpoint/request abstractions. The CLI will use the fork for `config test` and `search`; existing generic resource requests remain unchanged in this phase.
+**Architecture:** Keep the fork's existing API-Key authentication and implement Search as a typed endpoint using the library's existing endpoint/request abstractions. The CLI will use the fork for Issue, generic resource, `config test`, and `search` requests.
 
 **Tech Stack:** Rust 2024, `redmine-api` fork branch `dev`, `reqwest`, `serde`, `serde_json`, `serde_yaml`, `clap`, `rpassword`, Cargo tests.
 
@@ -27,10 +27,7 @@
 - Test: `/home/liuchuan/Documents/liuchuan/redmine-api/src/api.rs` or a focused test module beside it
 
 **Interfaces:**
-- Produce public `Authentication` with `ApiKey(String)` and `Basic { username: String, password: String }` variants.
 - Preserve `Redmine::new(Client, Url, &str)` and `RedmineAsync::new(Client, Url, &str)` as API-Key constructors.
-- Add `Redmine::with_authentication(Client, Url, Authentication)` and the async equivalent.
-- Add `Redmine::from_basic_auth(...)` and the async equivalent only if the existing constructor style requires a convenience API; otherwise use `with_authentication` consistently.
 
 - [ ] **Step 1: Write request-header tests** asserting API-Key requests send `x-redmine-api-key` and Basic Auth requests send an `Authorization: Basic ...` header without asserting or printing the password.
 - [ ] **Step 2: Run the focused library tests and confirm the new Basic Auth test fails before implementation.**
@@ -65,10 +62,9 @@
 - Test: `/home/liuchuan/Documents/liuchuan/redmine-cli-rs/tests/config.rs`
 
 **Interfaces:**
-- `Profile` retains `url`, `api_key`, `username`, and `password` values.
-- Add `Profile::authentication()` returning the fork's `redmine_api::api::Authentication` or a CLI-owned equivalent converted at the client boundary.
-- Validation accepts API Key, or a complete username/password pair, with API Key taking precedence.
-- Add a serializable redacted profile view containing name, URL, authentication type, and optional username but no secrets.
+- `Profile` retains `url` and `api_key` values.
+- Validation requires a non-empty API Key.
+- Add a serializable redacted profile view containing name, URL, and authentication type but no API Key.
 
 - [ ] **Step 1:** Add tests for API-Key profiles, complete Basic Auth profiles, incomplete Basic Auth profiles, and API-Key precedence.
 - [ ] **Step 2:** Change `Cargo.toml` to use `redmine-api` from `ssh://git@github.com/zjing123/redmine-api.git`, branch `dev`, then run `cargo check`.
@@ -88,7 +84,7 @@
 **Interfaces:**
 - Add `ConfigCommand` variants: `List`, `Get { profile }`, `Path`, `Validate`, `Set`, `Update`, `Test`, and `Remove { profile, yes }`.
 - `set` requires URL and creates a new profile; `update` changes only explicitly supplied fields.
-- API Key is accepted by `--api-key`; username by `--username`; missing secret input is requested through `rpassword` only on an interactive terminal.
+- API Key is accepted by `--api-key`; when omitted it is requested through `rpassword` only on an interactive terminal.
 - `remove` rejects absent `--yes` before loading or writing the configuration.
 
 - [ ] **Step 1:** Add CLI parsing tests for every subcommand and the `remove` confirmation flag.
@@ -108,7 +104,7 @@
 - Test: `/home/liuchuan/Documents/liuchuan/redmine-cli-rs/tests/search.rs`
 
 **Interfaces:**
-- `RedmineClient::from_profile(&Profile)` constructs the fork client using API Key or Basic Auth.
+- `RedmineClient::from_profile(&Profile)` constructs the fork client using the API Key.
 - `RedmineClient::current_user()` calls the existing current-user endpoint and returns a redacted JSON value.
 - `RedmineClient::search(query, limit, offset, resource_types)` calls the fork Search endpoint and returns JSON.
 
