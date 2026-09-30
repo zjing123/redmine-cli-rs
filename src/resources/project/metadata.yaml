@@ -1,0 +1,5 @@
+fields:
+  scalars: [id, identifier, name, description, status, created_on, updated_on]
+  relations: [parent, children, trackers, issue_categories, versions, memberships]
+schema:
+  operations: [get, list, create, update, delete, fields, schema]

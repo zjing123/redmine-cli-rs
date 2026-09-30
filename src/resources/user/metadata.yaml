@@ -1,0 +1,5 @@
+fields:
+  scalars: [id, login, firstname, lastname, mail, admin, status, created_on, last_login_on]
+  relations: [custom_fields, memberships, groups]
+schema:
+  operations: [get, list, create, update, delete, fields, schema]

@@ -1,0 +1,5 @@
+fields:
+  scalars: [id, issue, project, user, activity, hours, comments, spent_on, tyear, tmonth, tweek]
+  relations: [custom_fields]
+schema:
+  operations: [get, list, create, update, delete, fields, schema]

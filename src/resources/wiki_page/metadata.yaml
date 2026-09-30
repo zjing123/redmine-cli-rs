@@ -1,0 +1,5 @@
+fields:
+  scalars: [title, text, version, author, updated_on]
+  relations: [attachments]
+schema:
+  operations: [get, list, create, update, delete, fields, schema]

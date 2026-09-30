@@ -1,0 +1,13 @@
+resource: issue
+fields:
+  scalar: [id, subject, description, status, priority, author, assigned_to, project, created_on, updated_on]
+  relations: [children, attachments, relations, changesets, journals, watchers, allowed_statuses]
+schema:
+  operations:
+    create:
+      required: [project_id]
+      optional: [subject, description, tracker_id, status_id, priority_id, assigned_to_id, custom_fields]
+    update:
+      optional: [subject, description, tracker_id, status_id, priority_id, assigned_to_id, custom_fields, notes]
+    delete: true
+  readonly: [id, author, created_on, updated_on]
