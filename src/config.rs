@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
@@ -20,10 +20,8 @@ pub enum ConfigError {
     ProfileNotFound(String),
     #[error("profile '{0}' has no url")]
     MissingUrl(String),
-    #[error(
-        "profile '{0}' has no api_key; username/password authentication is not supported by redmine-api yet"
-    )]
-    MissingApiKey(String),
+    #[error("profile '{0}' has no valid authentication credentials")]
+    MissingAuthentication(String),
     #[error("no profile matches URL '{0}'")]
     NoUrlMatch(String),
     #[error("invalid Redmine URL '{0}'")]
@@ -32,7 +30,7 @@ pub enum ConfigError {
     InvalidIssueReference(String),
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
     pub url: String,
     #[serde(alias = "key")]
@@ -45,7 +43,7 @@ pub struct Profile {
     pub _version: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct RawConfig {
     #[serde(default)]
     profiles: BTreeMap<String, Profile>,
@@ -54,6 +52,7 @@ struct RawConfig {
 #[derive(Debug)]
 pub struct Config {
     raw: RawConfig,
+    path: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,8 +70,62 @@ impl Config {
         if !path.exists() {
             return Err(ConfigError::Missing(path));
         }
-        let raw = serde_yaml::from_str(&fs::read_to_string(path)?)?;
-        Ok(Self { raw })
+        let raw = serde_yaml::from_str(&fs::read_to_string(&path)?)?;
+        Ok(Self { raw, path })
+    }
+
+    pub fn load_or_default(path: Option<&Path>) -> Result<Self, ConfigError> {
+        let path = resolve_path(path);
+        if path.exists() {
+            Self::load(Some(&path))
+        } else {
+            Ok(Self {
+                raw: RawConfig {
+                    profiles: BTreeMap::new(),
+                },
+                path,
+            })
+        }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn profiles(&self) -> impl Iterator<Item = (&String, &Profile)> {
+        self.raw.profiles.iter()
+    }
+
+    pub fn profile_names(&self) -> impl Iterator<Item = &String> {
+        self.raw.profiles.keys()
+    }
+
+    pub fn profile_mut(&mut self, name: &str) -> Option<&mut Profile> {
+        self.raw.profiles.get_mut(name)
+    }
+
+    pub fn insert_profile(&mut self, name: String, profile: Profile) -> Option<Profile> {
+        self.raw.profiles.insert(name, profile)
+    }
+
+    pub fn remove_profile(&mut self, name: &str) -> Option<Profile> {
+        self.raw.profiles.remove(name)
+    }
+
+    pub fn save(&self) -> Result<(), ConfigError> {
+        if let Some(parent) = self.path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let text = serde_yaml::to_string(&self.raw)?;
+        fs::write(&self.path, text)?;
+        Ok(())
+    }
+
+    pub fn validate(&self) -> Result<(), ConfigError> {
+        for (name, profile) in &self.raw.profiles {
+            validate_profile(name, profile)?;
+        }
+        Ok(())
     }
 
     pub fn profile(&self, name: Option<&str>) -> Result<(String, Profile), ConfigError> {
@@ -130,6 +183,23 @@ impl Config {
     }
 }
 
+impl Profile {
+    pub fn authentication(&self) -> Result<redmine_api::api::Authentication, ConfigError> {
+        if let Some(api_key) = self.api_key.as_deref().filter(|value| !value.is_empty()) {
+            return Ok(redmine_api::api::Authentication::ApiKey(api_key.to_owned()));
+        }
+        match (self._username.as_deref(), self._password.as_deref()) {
+            (Some(username), Some(password)) if !username.is_empty() && !password.is_empty() => {
+                Ok(redmine_api::api::Authentication::Basic {
+                    username: username.to_owned(),
+                    password: password.to_owned(),
+                })
+            }
+            _ => Err(ConfigError::MissingAuthentication("profile".to_owned())),
+        }
+    }
+}
+
 fn default_path() -> PathBuf {
     env::var_os("HOME")
         .map(PathBuf::from)
@@ -137,12 +207,31 @@ fn default_path() -> PathBuf {
         .join(".config/redmine-cli/config.yaml")
 }
 
+fn resolve_path(path: Option<&Path>) -> PathBuf {
+    path.map(PathBuf::from)
+        .or_else(|| env::var_os("REDMINE_CONFIG").map(PathBuf::from))
+        .unwrap_or_else(default_path)
+}
+
 fn validate_profile(name: &str, profile: &Profile) -> Result<(), ConfigError> {
     if profile.url.is_empty() {
         return Err(ConfigError::MissingUrl(name.to_owned()));
     }
-    if profile.api_key.as_deref().is_none_or(str::is_empty) {
-        return Err(ConfigError::MissingApiKey(name.to_owned()));
+    Url::parse(&profile.url).map_err(|_| ConfigError::InvalidUrl(profile.url.clone()))?;
+    let has_api_key = profile
+        .api_key
+        .as_deref()
+        .is_some_and(|value| !value.is_empty());
+    let has_basic_auth = profile
+        ._username
+        .as_deref()
+        .is_some_and(|value| !value.is_empty())
+        && profile
+            ._password
+            .as_deref()
+            .is_some_and(|value| !value.is_empty());
+    if !has_api_key && !has_basic_auth {
+        return Err(ConfigError::MissingAuthentication(name.to_owned()));
     }
     Ok(())
 }

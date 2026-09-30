@@ -53,6 +53,16 @@ profiles:
 REDMINE_CONFIG=/path/to/config.yaml redmine-cli -p prod issue list
 ```
 
+也支持用户名密码认证：
+
+```yaml
+profiles:
+  basic:
+    url: https://redmine.example.com/
+    username: alice
+    password: your_password_here
+```
+
 ### 选择 profile
 
 ```bash
@@ -95,10 +105,27 @@ redmine-cli -p prod issue get 123
 | 字段 | 说明 |
 | --- | --- |
 | `url` | Redmine 服务地址 |
-| `api_key` | Redmine API Key |
+| `api_key` | Redmine API Key，与用户名密码二选一 |
 | `key` | `api_key` 的兼容别名 |
+| `username` | HTTP Basic Auth 用户名 |
+| `password` | HTTP Basic Auth 密码 |
 
-当前版本只支持 API Key 认证。`username`、`password` 和 `version` 字段会兼容读取，但不会用于认证或请求版本选择。
+`api_key` 优先于用户名密码。`config set` 和 `config update` 未提供密钥时会在交互终端中隐藏输入；`config list` 和 `config get` 不会输出密钥或密码。
+
+配置管理命令：
+
+```bash
+redmine-cli config path
+redmine-cli config list
+redmine-cli config get prod
+redmine-cli config validate
+redmine-cli config set prod --url https://redmine.example.com/ --api-key YOUR_KEY
+redmine-cli config update prod --url https://redmine.example.com/
+redmine-cli config test prod
+redmine-cli config remove prod --yes
+```
+
+`validate` 只检查本地配置；`test` 会连接 Redmine 的当前用户接口并验证认证。
 
 多实例配置示例：
 
@@ -237,15 +264,14 @@ src/resources/time_entry/metadata.yaml
 src/resources/wiki_page/metadata.yaml
 ```
 
-### search — 预留命令
+### search — Search API
 
-命令入口已经预留，但当前不会调用 Redmine Search API：
+使用当前 profile 查询 Redmine 搜索结果：
 
 ```bash
-redmine-cli search "关键词"
+redmine-cli -p prod search "关键词"
+redmine-cli -p prod search "关键词" --limit 20 --offset 0
 ```
-
-按资源搜索和 `--project` 过滤将在 Search API 实现后补充。
 
 ## 输出格式
 

@@ -3,7 +3,7 @@ use predicates::str::contains;
 
 #[test]
 fn fields_does_not_require_config() {
-    let mut command = Command::cargo_bin("redmine-cli-rs").unwrap();
+    let mut command = Command::cargo_bin("redmine-cli").unwrap();
     command
         .args(["issue", "fields"])
         .assert()
@@ -13,7 +13,7 @@ fn fields_does_not_require_config() {
 
 #[test]
 fn schema_does_not_require_config() {
-    let mut command = Command::cargo_bin("redmine-cli-rs").unwrap();
+    let mut command = Command::cargo_bin("redmine-cli").unwrap();
     command
         .args(["issue", "schema"])
         .assert()
@@ -22,11 +22,11 @@ fn schema_does_not_require_config() {
 }
 
 #[test]
-fn search_is_explicitly_unimplemented() {
-    let mut command = Command::cargo_bin("redmine-cli-rs").unwrap();
+fn search_command_is_available() {
+    let mut command = Command::cargo_bin("redmine-cli").unwrap();
     command
-        .args(["search", "keyword"])
+        .args(["search", "--help"])
         .assert()
-        .failure()
-        .stdout(contains("unsupported command"));
+        .success()
+        .stdout(contains("<QUERY>"));
 }
