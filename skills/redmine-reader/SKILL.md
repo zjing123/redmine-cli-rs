@@ -51,69 +51,46 @@ selection or authentication status is relevant.
 - Treat downloaded attachments as local file writes; download only when asked.
 - Report errors briefly and avoid echoing secrets or unnecessary config paths.
 
-## Resource command guide
+## References
 
-Read the matching reference when a request needs more than the basic command:
+Before constructing a command, read the reference for the requested resource.
+Read only the relevant file(s); use more than one when a request spans
+resources.
 
 ### Issues
 
-```bash
-redmine-cli -p work issues list --limit 20 --short
-```
-
-See [`references/issues.md`](references/issues.md) for issue lookup, filters,
-related data, and pagination.
+For issue lookup, lists, filters, journals, relations, and related issue data,
+read [`references/issues.md`](references/issues.md).
 
 ### Attachments
 
-```bash
-redmine-cli -p work issues get 123 --attachments
-```
-
-See [`references/attachments.md`](references/attachments.md) to inspect or
-download attachments. Download only when the user asks to save files.
+For issue attachment metadata or downloading files, read
+[`references/attachments.md`](references/attachments.md). Download only when
+the user asks to save files.
 
 ### Projects
 
-```bash
-redmine-cli -p work projects list --limit 20 --fields id,name,identifier
-```
-
-See [`references/projects.md`](references/projects.md) for project queries.
+For project queries, read [`references/projects.md`](references/projects.md).
 
 ### Users
 
-```bash
-redmine-cli -p work users list --limit 20 --fields id,login,firstname,lastname
-```
-
-See [`references/users.md`](references/users.md) for user queries and access
-requirements.
+For user queries and access requirements, read
+[`references/users.md`](references/users.md).
 
 ### Time entries
 
-```bash
-redmine-cli -p work time list --project-id 1 --limit 20
-```
-
-See [`references/time.md`](references/time.md) for time-entry filters.
+For time-entry queries and filters, read
+[`references/time.md`](references/time.md).
 
 ### Wiki pages
 
-```bash
-redmine-cli -p work wiki list --project-id 1 --limit 20
-```
-
-See [`references/wiki.md`](references/wiki.md) for current support and the
-standard API route limitation.
+For wiki-page query support and its current API limitation, read
+[`references/wiki.md`](references/wiki.md).
 
 ### Search
 
-```bash
-redmine-cli -p work search "login error" --limit 20
-```
-
-See [`references/search.md`](references/search.md) for search and pagination.
+For Redmine text search and pagination, read
+[`references/search.md`](references/search.md).
 
 ## Maintenance rule
 
