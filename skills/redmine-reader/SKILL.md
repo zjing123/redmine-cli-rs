@@ -14,8 +14,9 @@ description: >
 # Redmine Reader
 
 Use `redmine-cli` for read-only Redmine queries. Check the exact
-commands and examples in [`references/commands.md`](references/commands.md), and
-profile behavior in [`references/configuration.md`](references/configuration.md).
+commands and examples in the resource reference linked below. Read
+[`references/configuration.md`](references/configuration.md) when profile
+selection or authentication status is relevant.
 
 ## Workflow
 
@@ -49,6 +50,70 @@ profile behavior in [`references/configuration.md`](references/configuration.md)
   or displaying config-file secrets.
 - Treat downloaded attachments as local file writes; download only when asked.
 - Report errors briefly and avoid echoing secrets or unnecessary config paths.
+
+## Resource command guide
+
+Read the matching reference when a request needs more than the basic command:
+
+### Issues
+
+```bash
+redmine-cli -p work issues list --limit 20 --short
+```
+
+See [`references/issues.md`](references/issues.md) for issue lookup, filters,
+related data, and pagination.
+
+### Attachments
+
+```bash
+redmine-cli -p work issues get 123 --attachments
+```
+
+See [`references/attachments.md`](references/attachments.md) to inspect or
+download attachments. Download only when the user asks to save files.
+
+### Projects
+
+```bash
+redmine-cli -p work projects list --limit 20 --fields id,name,identifier
+```
+
+See [`references/projects.md`](references/projects.md) for project queries.
+
+### Users
+
+```bash
+redmine-cli -p work users list --limit 20 --fields id,login,firstname,lastname
+```
+
+See [`references/users.md`](references/users.md) for user queries and access
+requirements.
+
+### Time entries
+
+```bash
+redmine-cli -p work time list --project-id 1 --limit 20
+```
+
+See [`references/time.md`](references/time.md) for time-entry filters.
+
+### Wiki pages
+
+```bash
+redmine-cli -p work wiki list --project-id 1 --limit 20
+```
+
+See [`references/wiki.md`](references/wiki.md) for current support and the
+standard API route limitation.
+
+### Search
+
+```bash
+redmine-cli -p work search "login error" --limit 20
+```
+
+See [`references/search.md`](references/search.md) for search and pagination.
 
 ## Maintenance rule
 
