@@ -1,3 +1,4 @@
+pub mod auth_cli;
 pub mod cli;
 pub mod config;
 pub mod config_cli;

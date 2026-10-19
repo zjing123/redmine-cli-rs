@@ -33,13 +33,15 @@ pub enum ResourceError {
     MissingField(String),
     #[error("request failed with HTTP {status}: {body}")]
     Http { status: u16, body: String },
+    #[error("configuration is read-only; create, update, and delete operations are disabled")]
+    ReadOnly,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum ResourceCommand {
     #[command(
         about = "Get one resource by numeric ID or URL",
-        after_help = "ID-based requests require -p/--profile or REDMINE_PROFILE. A full resource URL may auto-detect the profile.\nExample:\n  redmine-cli -p prod <resource> get 1"
+        after_help = "Replace <resource> with projects, users, time, or wiki. ID-based requests use -p/--profile, REDMINE_PROFILE, or active_profile. A full resource URL may auto-detect the profile.\nExamples:\n  # Get a resource by ID\n  redmine-cli -p prod <resource> get 1\n\n  # Get a resource by URL and auto-detect its profile\n  redmine-cli <resource> get https://redmine.example.com/<resource>/1"
     )]
     Get {
         #[arg(help = "Resource ID or Redmine URL")]
@@ -49,7 +51,7 @@ pub enum ResourceCommand {
     },
     #[command(
         about = "List resources with optional filters and pagination",
-        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExample:\n  redmine-cli -p prod <resource> list --limit 20"
+        after_help = "Replace <resource> with projects, users, time, or wiki. Uses -p/--profile, REDMINE_PROFILE, or active_profile.\nExamples:\n  # List resources for a project\n  redmine-cli -p prod <resource> list --project-id 1 --limit 20\n\n  # Sort results and select output fields\n  redmine-cli -p prod <resource> list --sort updated_on:desc --fields id,name"
     )]
     List {
         #[arg(long, help = "Filter by project ID")]
@@ -75,12 +77,12 @@ pub enum ResourceCommand {
     },
     #[command(
         about = "Create a new resource from JSON or stdin",
-        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExamples:\n  redmine-cli -p prod <resource> create --json '{\"name\":\"Example\"}'\n  cat request.json | redmine-cli -p prod <resource> create --stdin"
+        after_help = "Replace <resource> with projects, users, time, or wiki. Uses -p/--profile, REDMINE_PROFILE, or active_profile.\nExamples:\n  # Create a resource from inline JSON\n  redmine-cli -p prod <resource> create --json '{\"name\":\"Example\"}'\n\n  # Read the create payload from a file\n  cat request.json | redmine-cli -p prod <resource> create --stdin"
     )]
     Create(ResourceInput),
     #[command(
         about = "Update an existing resource from JSON or stdin",
-        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExample:\n  redmine-cli -p prod <resource> update 1 --json '{\"name\":\"Updated\"}'"
+        after_help = "Replace <resource> with projects, users, time, or wiki. Uses -p/--profile, REDMINE_PROFILE, or active_profile.\nExamples:\n  # Update a resource from inline JSON\n  redmine-cli -p prod <resource> update 1 --json '{\"name\":\"Updated\"}'"
     )]
     Update {
         #[arg(help = "Resource ID or Redmine URL")]
@@ -90,7 +92,7 @@ pub enum ResourceCommand {
     },
     #[command(
         about = "Delete a resource by numeric ID or URL",
-        after_help = "Requires -p/--profile or REDMINE_PROFILE.\nExample:\n  redmine-cli -p prod <resource> delete 1"
+        after_help = "Replace <resource> with projects, users, time, or wiki. Uses -p/--profile, REDMINE_PROFILE, or active_profile.\nExamples:\n  # Delete a resource by ID\n  redmine-cli -p prod <resource> delete 1"
     )]
     Delete {
         #[arg(help = "Resource ID or Redmine URL")]
@@ -98,12 +100,12 @@ pub enum ResourceCommand {
     },
     #[command(
         about = "Show fields available in the resource response",
-        after_help = "Example:\n  redmine-cli <resource> fields"
+        after_help = "Replace <resource> with projects, users, time, or wiki.\nExamples:\n  # Show fields available in the response\n  redmine-cli <resource> fields"
     )]
     Fields,
     #[command(
         about = "Show the resource operation schema",
-        after_help = "Example:\n  redmine-cli <resource> schema"
+        after_help = "Replace <resource> with projects, users, time, or wiki.\nExamples:\n  # Show the create/update schema\n  redmine-cli <resource> schema"
     )]
     Schema,
 }
@@ -144,6 +146,16 @@ pub fn run(
 
     let config = Config::load(None)?;
     let (profile_name, profile_data) = config.profile(profile)?;
+    if config.is_read_only_for(&profile_name)
+        && matches!(
+            &command,
+            ResourceCommand::Create(_)
+                | ResourceCommand::Update { .. }
+                | ResourceCommand::Delete { .. }
+        )
+    {
+        return Err(ResourceError::ReadOnly);
+    }
     let client = crate::redmine_client::RedmineClient::from_profile(&profile_data)?;
     match command {
         ResourceCommand::Get { reference, fields } => {

@@ -37,10 +37,16 @@ pub struct Profile {
     pub api_key: Option<String>,
     #[serde(rename = "version")]
     pub _version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub read_only: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct RawConfig {
+    #[serde(default)]
+    read_only: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    active_profile: Option<String>,
     #[serde(default)]
     profiles: BTreeMap<String, Profile>,
 }
@@ -77,6 +83,8 @@ impl Config {
         } else {
             Ok(Self {
                 raw: RawConfig {
+                    read_only: false,
+                    active_profile: None,
                     profiles: BTreeMap::new(),
                 },
                 path,
@@ -86,6 +94,26 @@ impl Config {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    pub fn is_read_only_for(&self, profile: &str) -> bool {
+        self.raw
+            .profiles
+            .get(profile)
+            .and_then(|profile| profile.read_only)
+            .unwrap_or(self.raw.read_only)
+    }
+
+    pub fn active_profile(&self) -> Option<&str> {
+        self.raw.active_profile.as_deref()
+    }
+
+    pub fn set_active_profile(&mut self, name: &str) -> Result<(), ConfigError> {
+        if !self.raw.profiles.contains_key(name) {
+            return Err(ConfigError::ProfileNotFound(name.to_owned()));
+        }
+        self.raw.active_profile = Some(name.to_owned());
+        Ok(())
     }
 
     pub fn profiles(&self) -> impl Iterator<Item = (&String, &Profile)> {
@@ -105,7 +133,11 @@ impl Config {
     }
 
     pub fn remove_profile(&mut self, name: &str) -> Option<Profile> {
-        self.raw.profiles.remove(name)
+        let removed = self.raw.profiles.remove(name);
+        if removed.is_some() && self.raw.active_profile.as_deref() == Some(name) {
+            self.raw.active_profile = None;
+        }
+        removed
     }
 
     pub fn save(&self) -> Result<(), ConfigError> {
@@ -125,9 +157,8 @@ impl Config {
     }
 
     pub fn profile(&self, name: Option<&str>) -> Result<(String, Profile), ConfigError> {
-        let selected = name
-            .map(str::to_owned)
-            .or_else(|| env::var("REDMINE_PROFILE").ok())
+        let selected = self
+            .resolve_profile_name(name)
             .ok_or_else(|| ConfigError::ProfileNotFound("(profile is required)".to_owned()))?;
         let profile = self
             .raw
@@ -137,6 +168,12 @@ impl Config {
             .ok_or_else(|| ConfigError::ProfileNotFound(selected.clone()))?;
         validate_profile(&selected, &profile)?;
         Ok((selected, profile))
+    }
+
+    fn resolve_profile_name(&self, name: Option<&str>) -> Option<String> {
+        name.map(str::to_owned)
+            .or_else(|| env::var("REDMINE_PROFILE").ok())
+            .or_else(|| self.raw.active_profile.clone())
     }
 
     pub fn match_issue_url(&self, value: &str) -> Result<IssueReference, ConfigError> {
@@ -214,13 +251,10 @@ pub fn parse_issue_reference(
     let id = value
         .parse()
         .map_err(|_| ConfigError::InvalidIssueReference(value.to_owned()))?;
-    let profile = profile
-        .map(str::to_owned)
-        .or_else(|| env::var("REDMINE_PROFILE").ok())
-        .ok_or_else(|| {
-            ConfigError::ProfileNotFound(
-                "(profile is required for numeric issue references)".to_owned(),
-            )
-        })?;
+    let profile = config.resolve_profile_name(profile).ok_or_else(|| {
+        ConfigError::ProfileNotFound(
+            "(profile is required for numeric issue references)".to_owned(),
+        )
+    })?;
     Ok(IssueReference { profile, id })
 }

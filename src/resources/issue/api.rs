@@ -2,7 +2,7 @@ use redmine_api::api::issues::{
     CreateIssue, GetIssue, Issue, IssueInclude, IssueListInclude, ListIssues, SortByColumn,
     UpdateIssue,
 };
-use redmine_api::api::{self, ResponsePage};
+use redmine_api::api::{self, Endpoint, Pageable, QueryParams, ResponsePage, ReturnsJsonResponse};
 use serde_json::Value;
 use thiserror::Error;
 
@@ -61,24 +61,11 @@ impl ApiClient {
         if let Some(status) = &filters.status {
             builder.status_id(status_filter(status));
         }
-        if let Some(assignee_id) = filters.assigned_to_id {
-            builder.assignee(api::issues::AssigneeFilter::TheseAssignees(vec![
-                assignee_id,
-            ]));
+        if let Some(assignee) = &filters.assignee {
+            builder.assignee(assignee_filter(assignee)?);
         }
         if let Some(subject) = &filters.subject {
             builder.subject(api::StringFieldFilter::SubStringMatch(subject.clone()));
-        }
-        if let Some(custom_fields) = &filters.custom_fields {
-            builder.custom_field_filters(
-                custom_fields
-                    .iter()
-                    .map(|(id, value)| api::CustomFieldFilter {
-                        id: *id,
-                        value: api::StringFieldFilter::ExactMatch(value.clone()),
-                    })
-                    .collect(),
-            );
         }
         if !filters.includes.is_empty() {
             builder.include(filters.includes.clone());
@@ -89,6 +76,10 @@ impl ApiClient {
         let endpoint = builder
             .build()
             .map_err(|error| ApiError::Builder(error.to_string()))?;
+        let endpoint = FilteredIssueList {
+            endpoint,
+            filters: &filters.filters,
+        };
         let page = self.client.api().json_response_body_page::<_, Issue>(
             &endpoint,
             filters.offset,
@@ -127,6 +118,13 @@ impl ApiClient {
         self.client.api().ignore_response_body(&endpoint)?;
         Ok(())
     }
+
+    pub fn download_attachment(
+        &self,
+        attachment: &redmine_api::api::attachments::Attachment,
+    ) -> Result<Vec<u8>, ApiError> {
+        Ok(self.client.api().download_attachment(attachment)?)
+    }
 }
 
 #[derive(Debug, Default)]
@@ -135,13 +133,50 @@ pub struct IssueFilters {
     pub tracker_id: Option<u64>,
     pub priority_id: Option<u64>,
     pub status: Option<String>,
-    pub assigned_to_id: Option<u64>,
+    pub assignee: Option<String>,
     pub subject: Option<String>,
-    pub custom_fields: Option<Vec<(u64, String)>>,
+    pub filters: Vec<(String, String)>,
     pub includes: Vec<IssueListInclude>,
     pub sort: Option<String>,
     pub limit: u64,
     pub offset: u64,
+}
+
+struct FilteredIssueList<'a> {
+    endpoint: ListIssues,
+    filters: &'a [(String, String)],
+}
+
+impl Endpoint for FilteredIssueList<'_> {
+    fn method(&self) -> reqwest::Method {
+        self.endpoint.method()
+    }
+
+    fn endpoint(&self) -> std::borrow::Cow<'static, str> {
+        self.endpoint.endpoint()
+    }
+
+    fn parameters(&self) -> QueryParams<'_> {
+        let mut parameters = self.endpoint.parameters();
+        parameters.extend(
+            self.filters
+                .iter()
+                .map(|(key, value)| (key.as_str(), value.as_str())),
+        );
+        parameters
+    }
+
+    fn body(&self) -> Result<Option<(&'static str, Vec<u8>)>, redmine_api::Error> {
+        self.endpoint.body()
+    }
+}
+
+impl ReturnsJsonResponse for FilteredIssueList<'_> {}
+
+impl Pageable for FilteredIssueList<'_> {
+    fn response_wrapper_key(&self) -> String {
+        "issues".to_owned()
+    }
 }
 
 fn status_filter(value: &str) -> api::issues::IssueStatusFilter {
@@ -164,6 +199,17 @@ fn sort_filter(value: &str) -> SortByColumn {
             column_name: column.to_owned(),
         },
     )
+}
+
+fn assignee_filter(value: &str) -> Result<api::issues::AssigneeFilter, ApiError> {
+    match value {
+        "me" => Ok(api::issues::AssigneeFilter::Me),
+        "none" => Ok(api::issues::AssigneeFilter::NoAssignee),
+        id => id
+            .parse::<u64>()
+            .map(|id| api::issues::AssigneeFilter::TheseAssignees(vec![id]))
+            .map_err(|_| ApiError::InvalidField(format!("invalid assignee: {value}"))),
+    }
 }
 
 fn create_endpoint(payload: &Value) -> Result<CreateIssue<'static>, ApiError> {
@@ -509,3 +555,28 @@ const UPDATE_FIELDS: &[&str] = &[
     "private_notes",
     "uploads",
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::assignee_filter;
+
+    #[test]
+    fn assignee_filter_supports_current_user() {
+        assert_eq!(assignee_filter("me").unwrap().to_string(), "me");
+    }
+
+    #[test]
+    fn assignee_filter_supports_unassigned() {
+        assert_eq!(assignee_filter("none").unwrap().to_string(), "!*");
+    }
+
+    #[test]
+    fn assignee_filter_supports_numeric_ids() {
+        assert_eq!(assignee_filter("42").unwrap().to_string(), "42");
+    }
+
+    #[test]
+    fn assignee_filter_rejects_unknown_names() {
+        assert!(assignee_filter("alice").is_err());
+    }
+}
