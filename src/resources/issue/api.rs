@@ -42,9 +42,9 @@ impl ApiClient {
         let endpoint = builder
             .build()
             .map_err(|error| ApiError::Builder(error.to_string()))?;
-        let response: api::issues::IssueWrapper<Issue> =
+        let response: api::issues::IssueWrapper<Value> =
             self.client.api().json_response_body(&endpoint)?;
-        Ok(serde_json::to_value(response.issue)?)
+        Ok(response.issue)
     }
 
     pub fn list_issues(&self, filters: &IssueFilters) -> Result<ResponsePage<Value>, ApiError> {
@@ -559,6 +559,8 @@ const UPDATE_FIELDS: &[&str] = &[
 #[cfg(test)]
 mod tests {
     use super::assignee_filter;
+    use redmine_api::api::issues::IssueWrapper;
+    use serde_json::Value;
 
     #[test]
     fn assignee_filter_supports_current_user() {
@@ -578,5 +580,17 @@ mod tests {
     #[test]
     fn assignee_filter_rejects_unknown_names() {
         assert!(assignee_filter("alice").is_err());
+    }
+
+    #[test]
+    fn issue_response_allows_missing_updated_on() {
+        let response = serde_json::from_value::<IssueWrapper<Value>>(serde_json::json!({
+            "issue": { "id": 123, "subject": "Missing updated_on" }
+        }))
+        .unwrap();
+
+        assert_eq!(response.issue["id"], 123);
+        assert_eq!(response.issue["subject"], "Missing updated_on");
+        assert!(response.issue.get("updated_on").is_none());
     }
 }
