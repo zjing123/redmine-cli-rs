@@ -1,10 +1,10 @@
 # Redmine CLI
 
-基于 Rust 构建的 Redmine 命令行工具，专为脚本和 AI Agent 调用设计。所有命令输出均为 JSON，支持多 profile 配置和 Redmine API Key 认证。
+基于 Rust 构建的 Redmine 命令行工具，专为脚本和 AI Agent 调用设计。命令成功结果以 JSON 输出，支持多 profile 配置和 Redmine API Key 认证。
 
 ## 特性
 
-- Rust 单文件 CLI，无 Python 运行时依赖
+- Rust 编译的独立 CLI，无 Python 运行时依赖
 - 多实例 profile 配置
 - Issue 获取、列表、创建、更新和删除
 - Attachment 下载到本地
@@ -19,9 +19,10 @@
 需要 Rust stable toolchain：
 
 ```bash
-git clone https://github.com/zjing123/python-redmine-cli.git
-cd python-redmine-cli
+git clone https://github.com/zjing123/redmine-cli-rs.git
+cd redmine-cli-rs
 cargo build --release
+mkdir -p ~/.local/bin
 install -m 755 target/release/redmine-cli ~/.local/bin/redmine-cli
 ```
 
@@ -43,50 +44,58 @@ profiles:
   prod:
     url: https://redmine.example.com/
     api_key: your_api_key_here
+    read_only: true
   staging:
     url: https://staging.example.com/
     key: another_api_key_here
+read_only: true
+active_profile: prod
 ```
+
+全局 `read_only: true` 会拒绝对 Redmine 执行创建、更新和删除；profile 中的 `read_only: true` 或 `false` 可以覆盖全局值。省略 profile 级设置时继承全局值。查询、搜索、附件下载及 `fields`/`schema` 不受影响，本地认证配置管理也不受影响。
 
 也可以使用 `REDMINE_CONFIG` 指定配置文件：
 
 ```bash
-REDMINE_CONFIG=/path/to/config.yaml redmine-cli -p prod issue list
+REDMINE_CONFIG=/path/to/config.yaml redmine-cli -p prod issues list
 ```
 
 ### 选择 profile
 
 ```bash
-redmine-cli -p prod issue list
-REDMINE_PROFILE=prod redmine-cli issue list
+redmine-cli -p prod issues list
+REDMINE_PROFILE=prod redmine-cli issues list
+redmine-cli issues list # 使用 active_profile
 ```
+
+profile 选择优先级为命令行 `-p/--profile`、环境变量 `REDMINE_PROFILE`、配置中的 `active_profile`。
 
 数字 ID 需要指定 profile；Issue 完整 URL 会自动匹配 profile：
 
 ```bash
-redmine-cli -p prod issue get 123
-redmine-cli issue get https://redmine.example.com/issues/123
+redmine-cli -p prod issues get 123
+redmine-cli issues get https://redmine.example.com/issues/123
 ```
 
 ### 只读示例
 
 ```bash
-redmine-cli -p prod issue list --project-id 1709 --limit 20
-redmine-cli -p prod issue get 123 --fields id,subject,status
+redmine-cli -p prod issues list --project-id 1709 --limit 20
+redmine-cli -p prod issues get 123 --fields id,subject,status
 ```
 
 ## 全局选项
 
 ```text
--p, --profile <PROFILE>    选择配置 profile，也可以使用 REDMINE_PROFILE
+-p, --profile <PROFILE>    选择配置 profile；否则使用 REDMINE_PROFILE 或 active_profile
 -h, --help                 显示帮助
 -V, --version              显示版本
 ```
 
-全局选项放在资源命令之前：
+全局选项可以放在资源子命令之前，例如：
 
 ```bash
-redmine-cli -p prod issue get 123
+redmine-cli -p prod issues get 123
 ```
 
 ## 配置
@@ -98,23 +107,21 @@ redmine-cli -p prod issue get 123
 | `url` | Redmine 服务地址 |
 | `api_key` | Redmine API Key |
 | `key` | `api_key` 的兼容别名 |
+| `read_only` | 可选；限制该 profile 的创建、更新和删除操作，覆盖全局设置 |
 
-`config set` 和 `config update` 未提供密钥时会在交互终端中隐藏输入；`config list` 和 `config get` 不会输出 API Key。
-
-配置管理命令：
+认证管理命令：
 
 ```bash
+redmine-cli auth login
+redmine-cli auth login --name work -k YOUR_KEY -s https://redmine.example.com/
+redmine-cli auth list
+redmine-cli auth status
+redmine-cli auth switch work
+redmine-cli auth logout work
 redmine-cli config path
-redmine-cli config list
-redmine-cli config get prod
-redmine-cli config validate
-redmine-cli config set prod --url https://redmine.example.com/ --api-key YOUR_KEY
-redmine-cli config update prod --url https://redmine.example.com/
-redmine-cli config test prod
-redmine-cli config remove prod --yes
 ```
 
-`validate` 只检查本地配置；`test` 会连接 Redmine 的当前用户接口并验证认证。
+`auth login` 在提供 `-k/--api-key` 和 `-s/--server` 时直接验证并保存，不进入交互窗口；缺少任一参数时会交互补齐。省略 `--name` 时根据服务器主机名生成名称。同名 profile 会被重新验证并更新。`auth list` 不会输出 API Key；`auth status` 会连接 Redmine 获取当前用户信息。`auth switch` 设置默认 profile，`auth logout` 删除 profile 前会交互确认。
 
 多实例配置示例：
 
@@ -132,19 +139,21 @@ profiles:
 
 当前 CLI 按资源组织命令，不再提供旧版本的动态 `resource` 路由。
 
-除 `config`、`fields` 和 `schema` 外，访问 Redmine API 的命令都需要
-`-p/--profile <PROFILE>` 或 `REDMINE_PROFILE`。使用完整 Issue URL 时，CLI
-可以根据 URL 自动匹配已配置的 profile；其他资源的数字 ID 和 API 操作仍需要明确指定 profile。
+除 `config`、`fields` 和 `schema` 外，访问 Redmine API 的命令都使用
+`-p/--profile <PROFILE>`、`REDMINE_PROFILE` 或 `active_profile` 选择 profile。使用完整 Issue URL 时，CLI
+可以根据 URL 自动匹配已配置的 profile。
 
-### issue — Issue 操作
+### issues — Issue 操作
 
-#### issue get
+#### issues get
 
 ```bash
-redmine-cli -p prod issue get 123
-redmine-cli issue get https://redmine.example.com/issues/123
-redmine-cli -p prod issue get 123 --fields id,subject,status
-redmine-cli -p prod issue get 123 --include journals,attachments,relations
+redmine-cli -p prod issues get 123
+redmine-cli issues get https://redmine.example.com/issues/123
+redmine-cli -p prod issues get 123 --fields id,subject,status
+redmine-cli -p prod issues get 123 --include journals,attachments,relations
+redmine-cli -p prod issues get 123 --journals --attachments
+redmine-cli -p prod issues get 123 --download-attachments ./downloads/issue-123
 ```
 
 | 选项 | 说明 |
@@ -152,137 +161,151 @@ redmine-cli -p prod issue get 123 --include journals,attachments,relations
 | `<id-or-url>` | Issue 数字 ID 或完整 URL |
 | `--fields` | 逗号分隔的输出字段 |
 | `--include` | 逗号分隔的关联数据 |
+| `--journals`、`--children`、`--relations`、`--attachments` | 对应 `--include` 值的快捷开关，可与 `--include` 混用 |
+| `--download-attachments <目录>` | 下载该 Issue 的全部附件；自动请求附件数据，已存在的同名文件不会覆盖 |
 
-#### issue list
+#### issues list
 
 ```bash
-redmine-cli -p prod issue list
-redmine-cli -p prod issue list --project-id 1709 --status open
-redmine-cli -p prod issue list --assigned-to-id 42
-redmine-cli -p prod issue list --subject "登录" --sort updated_on:desc
-redmine-cli -p prod issue list --limit 20 --offset 0 --fields id,subject,status
-redmine-cli -p prod issue list --custom-fields '{"12":"frontend"}'
+redmine-cli -p prod issues list
+redmine-cli -p prod issues list --project-id 1709 --status open
+redmine-cli -p prod issues list --assignee me
+redmine-cli -p prod issues list --assignee 42
+redmine-cli -p prod issues list --assignee none
+redmine-cli -p prod issues list --subject "登录" --sort updated_on:desc
+redmine-cli -p prod issues list --limit 20 --offset 0 --fields id,subject,status
+redmine-cli -p prod issues list --filter status_id=1 --filter cf_12=frontend
+redmine-cli -p prod issues list --short
 ```
 
-支持的过滤和分页选项：
+支持的快捷过滤、通用过滤和分页选项：
 
 ```text
---project-id --tracker-id --priority-id --status --assigned-to-id
---subject --custom-fields --include --sort --fields --limit --offset
+--project-id --tracker-id --priority-id --status --assignee --subject
+--filter KEY=VALUE（可重复；自定义字段使用 cf_ID=VALUE）
+--include --sort --fields --short --limit --offset
 ```
 
-`--custom-fields` 接受 JSON 对象，列表结果包含 `total_count`、`limit`、`offset`、`profile` 和 `issues`。
+`--fields` 可指定任意输出字段；`--short` 返回 `id,subject,status,priority,assigned_to,updated_on`，两者不能同时使用。它们都在 CLI 获取 API 数据后进行输出投影，不改变 API 请求的数据量。列表结果包含 `total_count`、`limit`、`offset`、`profile` 和 `issues`。
 
-#### issue create
+`--assignee` 接受负责人 ID、`me`（当前 API 用户）或 `none`（未分配）。
+
+#### issues create
 
 ```bash
-redmine-cli -p prod issue create --project-id 1709 --subject "新 Issue"
-redmine-cli -p prod issue create \
+redmine-cli -p prod issues create --project-id 1709 --subject "新 Issue"
+redmine-cli -p prod issues create \
   --project-id 1709 --subject "Bug" --description "问题描述" \
-  --tracker-id 3 --priority-id 4 --assigned-to-id 42
-redmine-cli -p prod issue create --json \
+  --tracker-id 3 --priority-id 4 --assignee 42
+redmine-cli -p prod issues create --json \
   '{"project_id":1709,"subject":"新 Issue","description":"内容"}'
 echo '{"project_id":1709,"subject":"新 Issue"}' | \
-  redmine-cli -p prod issue create --stdin
+  redmine-cli -p prod issues create --stdin
 ```
 
-快捷参数包括 `--project-id`、`--subject`、`--description`、`--tracker-id`、`--priority-id`、`--assigned-to-id` 和 `--custom-fields`。与 JSON 同时使用时，快捷参数覆盖同名字段。
+快捷参数包括 `--project-id`、`--subject`、`--description`、`--tracker-id`、`--priority-id`、`--assignee` 和 `--custom-fields`。与 JSON 同时使用时，快捷参数覆盖同名字段；`--assignee` 接受用户或组 ID。
 
-#### issue update
+#### issues update
 
 ```bash
-redmine-cli -p prod issue update 123 --subject "更新后的标题"
-redmine-cli -p prod issue update 123 --assigned-to-id 42
-redmine-cli -p prod issue update 123 --json '{"status_id":3,"notes":"已解决"}'
-echo '{"status_id":3}' | redmine-cli -p prod issue update 123 --stdin
+redmine-cli -p prod issues update 123 --subject "更新后的标题"
+redmine-cli -p prod issues update 123 --assignee 42
+redmine-cli -p prod issues update 123 --json '{"status_id":3,"notes":"已解决"}'
+echo '{"status_id":3}' | redmine-cli -p prod issues update 123 --stdin
 ```
 
-#### issue delete
+#### issues delete
 
 ```bash
-redmine-cli -p prod issue delete 123
-redmine-cli issue delete https://redmine.example.com/issues/123
+redmine-cli -p prod issues delete 123
+redmine-cli issues delete https://redmine.example.com/issues/123
 ```
 
-#### issue fields / schema
+#### issues fields / schema
 
 这两个命令读取 `src/resources/issue/metadata.yaml`，不访问 Redmine：
 
 ```bash
-redmine-cli issue fields
-redmine-cli issue schema
+redmine-cli issues fields
+redmine-cli issues schema
 ```
 
-### attachment — Attachment 操作
+### attachments — Attachment 操作
 
 附件下载需要 profile 和附件 ID。默认保存到 `$HOME/Downloads`，目录不存在时自动创建；
 目标文件已存在时不会覆盖。
 
 ```bash
-redmine-cli -p prod issue get 124365 --include attachments
-redmine-cli -p prod attachment download 391795
-redmine-cli -p prod attachment download 391795 --output ./clipboard.png
+redmine-cli -p prod issues get 124365 --include attachments
+redmine-cli -p prod attachments download 391795
+redmine-cli -p prod attachments download 391795 --output ./clipboard.png
 ```
 
-### project — Project 操作
+### projects — Project 操作
 
 ```bash
-redmine-cli -p prod project get 1
-redmine-cli -p prod project get 1 --fields id,name,identifier
-redmine-cli -p prod project list --limit 20 --fields id,name,identifier
-redmine-cli -p prod project list --status 1 --sort name --offset 0
-redmine-cli -p prod project create --json '{"name":"Example","identifier":"example"}'
-echo '{"name":"Updated"}' | redmine-cli -p prod project update 1 --stdin
-redmine-cli -p prod project delete 1
-redmine-cli project fields
-redmine-cli project schema
+redmine-cli -p prod projects get 1
+redmine-cli -p prod projects get 1 --fields id,name,identifier
+redmine-cli -p prod projects list --limit 20 --fields id,name,identifier
+redmine-cli -p prod projects list --limit 20 --offset 0
+redmine-cli -p prod projects create --json '{"name":"Example","identifier":"example"}'
+echo '{"name":"Updated"}' | redmine-cli -p prod projects update 1 --stdin
+redmine-cli -p prod projects delete 1
+redmine-cli projects fields
+redmine-cli projects schema
 ```
 
-### user — User 操作
+### users — User 操作
 
 ```bash
-redmine-cli -p prod user get 5
-redmine-cli -p prod user get 5 --fields id,login,firstname,lastname
-redmine-cli -p prod user list --limit 20 --fields id,login,firstname,lastname
-redmine-cli -p prod user list --project-id 1 --status 1
-redmine-cli -p prod user create --json '{"login":"demo","firstname":"Demo","lastname":"User"}'
-echo '{"firstname":"Updated"}' | redmine-cli -p prod user update 5 --stdin
-redmine-cli -p prod user delete 5
-redmine-cli user fields
-redmine-cli user schema
+redmine-cli -p prod users get 5
+redmine-cli -p prod users get 5 --fields id,login,firstname,lastname
+redmine-cli -p prod users list --limit 20 --fields id,login,firstname,lastname
+redmine-cli -p prod users list --status 1
+redmine-cli -p prod users create --json '{"login":"demo","firstname":"Demo","lastname":"User","mail":"demo@example.com"}'
+echo '{"firstname":"Updated"}' | redmine-cli -p prod users update 5 --stdin
+redmine-cli -p prod users delete 5
+redmine-cli users fields
+redmine-cli users schema
 ```
 
-### time-entry — Time Entry 操作
+Redmine 的用户列表 API 要求管理员权限；`--status` 可用于筛选用户状态。
+
+### time — Time Entry 操作
 
 ```bash
-redmine-cli -p prod time-entry get 1
-redmine-cli -p prod time-entry get 1 --fields id,issue,hours,spent_on,user
-redmine-cli -p prod time-entry list --project-id 1 --limit 20
-redmine-cli -p prod time-entry list --user-id 5 --sort spent_on:desc
-redmine-cli -p prod time-entry create --json '{"issue_id":123,"hours":1.5}'
-echo '{"hours":2}' | redmine-cli -p prod time-entry update 1 --stdin
-redmine-cli -p prod time-entry delete 1
-redmine-cli time-entry fields
-redmine-cli time-entry schema
+redmine-cli -p prod time get 1
+redmine-cli -p prod time get 1 --fields id,issue,hours,spent_on,user
+redmine-cli -p prod time list --project-id 1 --limit 20
+redmine-cli -p prod time list --user-id 5 --sort spent_on:desc
+redmine-cli -p prod time create --json '{"issue_id":123,"hours":1.5}'
+echo '{"hours":2}' | redmine-cli -p prod time update 1 --stdin
+redmine-cli -p prod time delete 1
+redmine-cli time fields
+redmine-cli time schema
 ```
 
-### wiki-page — Wiki Page 操作
+创建工时需要提供 issue 或 project 以及 hours；如果 Redmine 未配置默认工时活动，还需要在 JSON 中提供 `activity_id`。
+
+### wiki — Wiki Page 操作
+
+注意：当前 Wiki 命令复用通用资源路由（`/wiki_pages/...`），而 [Redmine 官方 Wiki Pages REST API](https://www.redmine.org/projects/redmine/wiki/Rest_WikiPages) 使用项目和页面标题构成的路径（`/projects/{project}/wiki/{title}`）。因此下列命令虽然可被 CLI 解析，但目前不能保证适用于标准 Redmine；完整支持需要调整命令实现。
 
 ```bash
-redmine-cli -p prod wiki-page get 1
-redmine-cli -p prod wiki-page get 1 --fields id,title,text
-redmine-cli -p prod wiki-page list --project-id 1709 --limit 20
-redmine-cli -p prod wiki-page list --sort title
-redmine-cli -p prod wiki-page create --json '{"title":"Home","text":"内容"}'
-echo '{"text":"Updated content"}' | redmine-cli -p prod wiki-page update 1 --stdin
-redmine-cli -p prod wiki-page delete 1
-redmine-cli wiki-page fields
-redmine-cli wiki-page schema
+redmine-cli -p prod wiki get 1
+redmine-cli -p prod wiki get 1 --fields id,title,text
+redmine-cli -p prod wiki list --project-id 1709 --limit 20
+redmine-cli -p prod wiki list --sort title
+redmine-cli -p prod wiki create --json '{"title":"Home","text":"内容"}'
+echo '{"text":"Updated content"}' | redmine-cli -p prod wiki update 1 --stdin
+redmine-cli -p prod wiki delete 1
+redmine-cli wiki fields
+redmine-cli wiki schema
 ```
 
 ### 通用资源参数
 
-`project`、`user`、`time-entry` 和 `wiki-page` 提供统一的基础命令：
+`project`、`user`、`time` 和 `wiki` 提供统一的基础命令：
 
 ```text
 get <reference> | list | create | update <reference> | delete <reference> | fields | schema
@@ -300,7 +323,7 @@ redmine-cli <resource> fields
 redmine-cli <resource> schema
 ```
 
-通用列表选项：
+通用资源列表参数（是否受目标 Redmine 资源支持，取决于对应 API）：
 
 ```text
 --project-id --user-id --assigned-to-id --status
@@ -310,9 +333,9 @@ redmine-cli <resource> schema
 创建和更新支持 JSON 或 stdin：
 
 ```bash
-redmine-cli -p prod project create --json \
+redmine-cli -p prod projects create --json \
   '{"name":"Example","identifier":"example"}'
-echo '{"name":"Updated"}' | redmine-cli -p prod project update 1 --stdin
+echo '{"name":"Updated"}' | redmine-cli -p prod projects update 1 --stdin
 ```
 
 各资源元数据文件位于：
@@ -360,16 +383,16 @@ redmine-cli -p prod search "关键词" --limit 20 --offset 0
 推荐先使用 `fields` 或 `--fields` 减少输出：
 
 ```bash
-redmine-cli issue fields
-redmine-cli -p prod issue get 123 --fields id,subject,status,assigned_to
+redmine-cli issues fields
+redmine-cli -p prod issues get 123 --fields id,subject,status,assigned_to
 ```
 
 典型只读流程：
 
 ```bash
-redmine-cli -p prod issue list --project-id 1709 --limit 10 \
+redmine-cli -p prod issues list --project-id 1709 --limit 10 \
   --sort updated_on:desc --fields id,subject,status
-redmine-cli issue get https://redmine.example.com/issues/123 \
+redmine-cli issues get https://redmine.example.com/issues/123 \
   --fields id,subject,description,journals
 ```
 
