@@ -1,27 +1,26 @@
 ---
 name: redmine-reader
 description: >
-  Use the Rust implementation of redmine-cli for read-only Redmine work:
+  Use redmine-cli for read-only Redmine work:
   inspect, list, filter, and search issues; review issue journals, attachments,
   and relations; and query project, user, time-entry, or wiki data. Trigger when
   the user asks about Redmine issues/tickets, their assigned work, project
-  context, or provides a Redmine issue URL. This skill is specific to the Rust
-  CLI and must use its command names, flags, profile handling, and JSON envelope.
+  context, or provides a Redmine issue URL. Follow the CLI's command names,
+  flags, profile handling, and JSON envelope.
   Do not use it to create, update, or delete Redmine data or to change local auth
   profiles.
 ---
 
-# Redmine Reader (Rust CLI)
+# Redmine Reader
 
-Use the Rust `redmine-cli` for read-only Redmine queries. Check the exact
+Use `redmine-cli` for read-only Redmine queries. Check the exact
 commands and examples in [`references/commands.md`](references/commands.md), and
 profile behavior in [`references/configuration.md`](references/configuration.md).
 
 ## Workflow
 
-1. If the executable or its version is uncertain, run `redmine-cli --version`
-   and confirm the output identifies the Rust implementation; use the current
-   Rust command help when a flag is unclear.
+1. If a flag or command is unclear, check the current help with
+   `redmine-cli --help` or `redmine-cli <command> --help`.
 2. Select a configured profile with `-p <profile>`, `REDMINE_PROFILE`, or the
    configured `active_profile`. Full issue URLs can automatically match a
    configured profile; numeric issue IDs need a selected profile.
@@ -33,7 +32,7 @@ profile behavior in [`references/configuration.md`](references/configuration.md)
    `--relations`, or `--attachments` with `issues get`; use
    `--download-attachments <directory>` only when the user explicitly asks to
    save attachment files locally.
-5. Parse the Rust CLI JSON envelope: successful output is
+5. Parse the CLI JSON envelope: successful output is
    `{"ok":true,"data":...}`; errors are `{"ok":false,"error":"..."}`.
    For list results, the `data` object contains pagination information and an
    `issues` array. Summarize relevant results instead of dumping large payloads.
@@ -53,8 +52,7 @@ profile behavior in [`references/configuration.md`](references/configuration.md)
 
 ## Maintenance rule
 
-When Rust CLI commands, flags, profile resolution, output envelopes, or read
-behavior change, update this skill and its references in the same change. Verify
-the documented examples against the Rust CLI help and add or adjust CLI tests
-when the documented interface changes. Keep this skill aligned with the Rust
-implementation.
+When commands, flags, profile resolution, output envelopes, or read behavior
+change, update this skill and its references in the same change. Verify the
+documented examples against CLI help and add or adjust CLI tests when the
+documented interface changes. Keep this skill aligned with the CLI.

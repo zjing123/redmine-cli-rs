@@ -1,6 +1,6 @@
-# Rust CLI profiles and configuration
+# CLI profiles and configuration
 
-The Rust CLI stores its YAML configuration by default at
+The CLI stores its YAML configuration by default at
 `~/.config/redmine-cli/config.yaml`. `REDMINE_CONFIG` overrides that path.
 Use `redmine-cli config path` to print the active path without displaying its
 contents.

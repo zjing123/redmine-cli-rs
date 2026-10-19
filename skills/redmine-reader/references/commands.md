@@ -1,4 +1,4 @@
-# Rust `redmine-cli` read commands
+# `redmine-cli` read commands
 
 All successful commands emit a JSON object with `ok` and `data`. The examples
 below assume `work` is a configured profile. Global `-p/--profile` can be used
@@ -45,7 +45,7 @@ only be performed when explicitly requested.
 
 ## Projects and other resources
 
-Use the plural Rust command names. These resources use the shared `get`,
+Use the plural command names shown here. These resources use the shared `get`,
 `list`, `fields`, and `schema` commands; `projects`, `users`, `time`, and `wiki`
 also expose create/update/delete commands, which this read-only skill must not
 invoke.
